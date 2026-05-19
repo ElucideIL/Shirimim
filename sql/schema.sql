@@ -133,3 +133,105 @@ $$;
 -- ----------------------------------------------------------------------------
 alter table tracks      enable row level security;
 alter table daily_songs enable row level security;
+
+-- ============================================================================
+-- PARTY MODE — real-time multiplayer
+-- ============================================================================
+
+-- Distractor metadata on tracks (populated by the ingestion script).
+alter table tracks add column if not exists genre  text;
+alter table tracks add column if not exists script text;   -- hebrew | latin | other
+
+create index if not exists tracks_genre_idx        on tracks (genre);
+create index if not exists tracks_script_idx       on tracks (script);
+create index if not exists tracks_artist_lower_idx on tracks (lower(artist));
+
+-- ----------------------------------------------------------------------------
+-- rooms: one per Party game. RLS locked — written only by server actions.
+-- ----------------------------------------------------------------------------
+create table if not exists rooms (
+  id                uuid primary key default uuid_generate_v4(),
+  code              text unique not null,
+  host_id           text not null,                 -- secret; gates host actions
+  status            text not null default 'waiting'
+                      check (status in ('waiting', 'playing', 'finished')),
+  current_round     int  not null default 0,
+  max_rounds        int  not null default 10,
+  current_answer_id uuid references tracks(id),     -- server-only; never sent raw
+  round_started_at  timestamptz,                   -- server clock for scoring
+  round_options     jsonb,                         -- 4 shown options (no answer flag)
+  created_at        timestamptz not null default now()
+);
+create index if not exists rooms_code_idx on rooms (code);
+
+-- ----------------------------------------------------------------------------
+-- players: one per participant in a room.
+-- ----------------------------------------------------------------------------
+create table if not exists players (
+  id                  uuid primary key default uuid_generate_v4(),
+  room_id             uuid not null references rooms(id) on delete cascade,
+  name                text not null,
+  score               int  not null default 0,
+  is_ready            boolean not null default false,
+  last_answered_round int  not null default 0,      -- one guess per round
+  created_at          timestamptz not null default now()
+);
+create index if not exists players_room_idx on players (room_id);
+
+-- ----------------------------------------------------------------------------
+-- party_distractors: up to p_count wrong-answer tracks for a Party round.
+-- Cascade, best tier first: same artist -> same genre+script -> same script -> any.
+-- ----------------------------------------------------------------------------
+create or replace function party_distractors(p_correct_id uuid, p_count int default 3)
+returns table (id uuid, artist text, title text)
+language plpgsql
+as $$
+declare
+  v_artist text;
+  v_genre  text;
+  v_script text;
+begin
+  select t.artist, t.genre, t.script
+    into v_artist, v_genre, v_script
+  from tracks t where t.id = p_correct_id;
+
+  return query
+  with pool as (
+    (select t.id, t.artist, t.title, 1 as tier
+       from tracks t
+      where t.id <> p_correct_id and lower(t.artist) = lower(v_artist)
+      order by random() limit p_count)
+    union all
+    (select t.id, t.artist, t.title, 2 as tier
+       from tracks t
+      where t.id <> p_correct_id and lower(t.artist) <> lower(v_artist)
+        and t.genre  is not distinct from v_genre
+        and t.script is not distinct from v_script
+      order by random() limit p_count)
+    union all
+    (select t.id, t.artist, t.title, 3 as tier
+       from tracks t
+      where t.id <> p_correct_id and lower(t.artist) <> lower(v_artist)
+        and t.script is not distinct from v_script
+      order by random() limit p_count)
+    union all
+    (select t.id, t.artist, t.title, 4 as tier
+       from tracks t
+      where t.id <> p_correct_id
+      order by random() limit p_count)
+  ),
+  deduped as (
+    select distinct on (pool.id) pool.id, pool.artist, pool.title, pool.tier
+    from pool
+    order by pool.id, pool.tier
+  )
+  select deduped.id, deduped.artist, deduped.title
+  from deduped
+  order by deduped.tier, random()
+  limit p_count;
+end;
+$$;
+
+-- Party tables: RLS locked, same as the rest of the app.
+alter table rooms   enable row level security;
+alter table players enable row level security;

@@ -194,6 +194,12 @@ export function GameBoard({
           >
             {navLabel}
           </Link>
+          <Link
+            href="/party"
+            className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-white/70 hover:bg-white/10"
+          >
+            Party
+          </Link>
         </div>
       </header>
 

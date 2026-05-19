@@ -17,3 +17,16 @@ export const EPOCH = "2026-05-20";
 
 /** All daily-puzzle date math happens in this timezone. */
 export const GAME_TZ = "Asia/Jerusalem";
+
+// --- Party Mode ---
+/** Length of one Party round's audio clip + answer window. */
+export const PARTY_ROUND_SECONDS = 15;
+export const PARTY_ROUND_MS = PARTY_ROUND_SECONDS * 1000;
+/** Max points for an instant correct answer. */
+export const PARTY_MAX_POINTS = 1000;
+/** How long the reveal + leaderboard shows between rounds. */
+export const PARTY_REVEAL_SECONDS = 5;
+/** Round-count bounds the host can choose when creating a room. */
+export const PARTY_DEFAULT_ROUNDS = 10;
+export const PARTY_MIN_ROUNDS = 3;
+export const PARTY_MAX_ROUNDS = 20;

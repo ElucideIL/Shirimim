@@ -57,3 +57,60 @@ export interface TurnResult {
   gameOver: boolean;
   answer: Answer | null;
 }
+
+// ---------------------------------------------------------------------------
+// Party Mode
+// ---------------------------------------------------------------------------
+export type RoomStatus = "waiting" | "playing" | "finished";
+
+/** One multiple-choice option (correct flag is never sent to clients). */
+export interface PartyOption {
+  id: string;
+  artist: string;
+  title: string;
+}
+
+export interface PartyPlayer {
+  id: string;
+  name: string;
+  score: number;
+}
+
+export interface LeaderboardEntry {
+  playerId: string;
+  name: string;
+  score: number;
+  rank: number;
+}
+
+/** START_ROUND payload — audio + 4 options, never which one is correct. */
+export interface PartyRound {
+  round: number;
+  maxRounds: number;
+  options: PartyOption[];
+  audio: ClientTrack;
+  startedAt: number; // server epoch ms
+}
+
+/** END_ROUND / GAME_OVER payload — the reveal once the round has closed. */
+export interface RoundReveal {
+  round: number;
+  correctOptionId: string;
+  answer: Answer;
+  leaderboard: LeaderboardEntry[];
+  gameOver: boolean;
+}
+
+/** Snapshot from getRoomState for refresh / late-join. */
+export interface RoomSnapshot {
+  status: RoomStatus;
+  currentRound: number;
+  maxRounds: number;
+  roster: PartyPlayer[];
+}
+
+export type PartyEventName =
+  | "PLAYER_JOINED"
+  | "START_ROUND"
+  | "PLAYER_ANSWERED"
+  | "END_ROUND";

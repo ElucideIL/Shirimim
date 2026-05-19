@@ -81,6 +81,15 @@ def norm(text: str) -> str:
     return re.sub(r"[^a-z0-9֐-׿]", "", text)
 
 
+def detect_script(text: str) -> str:
+    """Classify writing system for distractor matching: hebrew, latin, or other."""
+    if re.search(r"[֐-׿]", text or ""):
+        return "hebrew"
+    if re.search(r"[A-Za-z]", text or ""):
+        return "latin"
+    return "other"
+
+
 def artist_matches(query_artist: str, result_artist: str) -> bool:
     """True if either artist string loosely contains the other."""
     a, b = norm(query_artist), norm(result_artist)
@@ -214,13 +223,17 @@ def itunes_lookup(artist: str, title: str):
 
     r = originals[0]
     artwork = (r.get("artworkUrl100") or "").replace("100x100bb", "600x600bb")
+    final_artist = clean(r.get("artistName") or artist)
+    final_title = clean(r.get("trackName") or title)
     return {
-        "artist": clean(r.get("artistName") or artist),
-        "title": clean(r.get("trackName") or title),
+        "artist": final_artist,
+        "title": final_title,
         "source": "itunes",
         "preview_url": r.get("previewUrl"),
         "youtube_id": None,
         "artwork_url": artwork or None,
+        "genre": clean(r.get("primaryGenreName")) or None,
+        "script": detect_script(f"{final_artist} {final_title}"),
     }
 
 
@@ -273,6 +286,8 @@ def youtube_lookup(artist: str, title: str):
             "preview_url": None,
             "youtube_id": vid,
             "artwork_url": meta.get("thumbnail"),
+            "genre": None,  # iTunes-only; tolerated by the distractor cascade
+            "script": detect_script(f"{artist} {title}"),
         }
     return None
 
