@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — secrets are ignored, examples are committed
 .env*
+!.env.example
+!ingest/.env.example
 
 # vercel
 .vercel
@@ -39,3 +41,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python ingestion
+ingest/.venv/
+ingest/__pycache__/
+*.pyc
+ingest/progress_state.json
+ingest/unresolved.csv
+ingest/seed.csv

@@ -1,0 +1,4 @@
+supabase>=2.4
+yt-dlp>=2024.8.6
+requests>=2.31
+python-dotenv>=1.0
