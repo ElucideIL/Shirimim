@@ -95,10 +95,16 @@ export function useAudioEngine(track: ClientTrack): AudioEngine {
   // Playback is offset by track.startOffsetMs to skip a quiet intro; positions
   // reported to the game are always relative to that offset (0 = clip start).
   const getPositionMs = useCallback((): number => {
-    const raw =
-      track.source === "itunes"
-        ? (audioRef.current?.currentTime ?? 0) * 1000
-        : (ytRef.current?.getCurrentTime() ?? 0) * 1000;
+    let raw = 0;
+    if (track.source === "itunes") {
+      raw = (audioRef.current?.currentTime ?? 0) * 1000;
+    } else {
+      const p = ytRef.current;
+      // A YT player object exists before it is ready, but its methods do not.
+      if (p && typeof p.getCurrentTime === "function") {
+        raw = p.getCurrentTime() * 1000;
+      }
+    }
     return Math.max(0, raw - track.startOffsetMs);
   }, [track.source, track.startOffsetMs]);
 
@@ -112,7 +118,7 @@ export function useAudioEngine(track: ClientTrack): AudioEngine {
       }
     } else {
       const p = ytRef.current;
-      if (p) {
+      if (p && typeof p.seekTo === "function") {
         p.pauseVideo();
         p.seekTo(offsetSec, true);
       }
@@ -174,7 +180,9 @@ export function useAudioEngine(track: ClientTrack): AudioEngine {
         });
       } else {
         const p = ytRef.current;
-        if (!p) return;
+        // The player object exists before it is ready, but its methods do not
+        // — calling seekTo too early throws. Bail until the API is live.
+        if (!p || typeof p.seekTo !== "function") return;
         p.seekTo(offsetSec, true);
         p.playVideo();
       }

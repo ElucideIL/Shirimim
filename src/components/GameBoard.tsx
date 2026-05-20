@@ -93,6 +93,8 @@ export function GameBoard({
   const [pending, setPending] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [modalDismissed, setModalDismissed] = useState(false);
+  // Guards the one-time round-end effect (result report + auto-play).
+  const roundEndReported = useRef(false);
 
   // Restore saved progress (only when a persist key is supplied).
   useEffect(() => {
@@ -109,6 +111,12 @@ export function GameBoard({
         setStatus(saved.status ?? "playing");
         setAnswer(saved.answer ?? null);
         setHint(saved.hint ?? NO_HINT);
+        // A round restored as already-finished must NOT re-fire the round-end
+        // effect: no auto-play (the audio backend may not be ready yet on a
+        // client navigation) and no duplicate result report.
+        if ((saved.status ?? "playing") !== "playing") {
+          roundEndReported.current = true;
+        }
       }
     } catch {
       /* corrupt entry — start fresh */
@@ -128,7 +136,6 @@ export function GameBoard({
   }, [hydrated, persistKey, currentAttempt, guesses, status, answer, hint]);
 
   // Report the round result once when it ends, and auto-play the longer clip.
-  const roundEndReported = useRef(false);
   useEffect(() => {
     if (status !== "playing" && !roundEndReported.current) {
       roundEndReported.current = true;
