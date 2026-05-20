@@ -25,6 +25,12 @@ export const HINT_YEAR_AFTER = 3;
 /** Lyric lines in one round — one is shown up front, one more per wrong guess. */
 export const LYRICS_LINES = MAX_ATTEMPTS;
 
+/**
+ * DOM id of the permanent off-screen host the YouTube IFrame player mounts
+ * into. It lives in the root layout and must never unmount — see audioEngine.
+ */
+export const YT_HOST_ID = "yt-player-host";
+
 /** Day 0 of the game (calendar date in GAME_TZ). */
 export const EPOCH = "2026-05-20";
 

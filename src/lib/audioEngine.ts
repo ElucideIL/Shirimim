@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { YT_HOST_ID } from "./constants";
 import type { ClientTrack } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -37,9 +38,6 @@ declare global {
     onYouTubeIframeAPIReady?: () => void;
   }
 }
-
-/** DOM id of the off-screen host div the YouTube player mounts into. */
-export const YT_HOST_ID = "yt-player-host";
 
 let ytApiPromise: Promise<YTNamespace> | null = null;
 
@@ -226,8 +224,13 @@ export function useAudioEngine(track: ClientTrack): AudioEngine {
       if (cancelled) return;
       const host = document.getElementById(YT_HOST_ID);
       if (!host) return;
+      // The host is a permanent layout-level node React owns and never
+      // unmounts. We hand the YT API a fresh throwaway child instead — it
+      // replaces whatever it is given with an <iframe>, and React must never
+      // see one of its own nodes vanish. replaceChildren clears any leftover
+      // iframe from a previous round.
       const mount = document.createElement("div");
-      host.appendChild(mount);
+      host.replaceChildren(mount);
       player = new YT.Player(mount, {
         videoId: track.youtubeId as string,
         playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0 },

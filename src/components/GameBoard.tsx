@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAudioEngine, YT_HOST_ID } from "@/lib/audioEngine";
+import { useAudioEngine } from "@/lib/audioEngine";
 import { FULL_CLIP_MS, INTERVALS, MAX_ATTEMPTS, TOTAL_MS } from "@/lib/constants";
 import type {
   Answer,
@@ -289,15 +289,6 @@ export function GameBoard({
         onSkip={handleSkip}
         disabled={over || pending}
       />
-
-      {track.source === "youtube" && (
-        <div
-          aria-hidden
-          className="pointer-events-none fixed top-0 left-[-9999px] h-[200px] w-[200px] overflow-hidden"
-        >
-          <div id={YT_HOST_ID} />
-        </div>
-      )}
 
       {showEnd &&
         answer &&
