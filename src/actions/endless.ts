@@ -30,11 +30,20 @@ export async function startEndlessRound(
   const supabase = getServiceClient();
   const excludeId = prevToken ? openTrackId(prevToken) : null;
 
+  const decadeStart = filter?.kind === "decade" ? filter.decade : null;
   const { data: trackId, error } = await supabase.rpc("random_track", {
     exclude_id: excludeId,
-    p_genre: filter?.kind === "genre" ? filter.genre : null,
-    p_script: filter?.kind === "hebrew" ? "hebrew" : null,
+    p_genre:
+      filter?.kind === "genre" || filter?.kind === "hebrew_genre"
+        ? filter.genre
+        : null,
+    p_script:
+      filter?.kind === "hebrew" || filter?.kind === "hebrew_genre"
+        ? "hebrew"
+        : null,
     p_artist: filter?.kind === "artist" ? filter.artist : null,
+    p_year_min: decadeStart,
+    p_year_max: decadeStart === null ? null : decadeStart + 9,
   });
   if (error) throw new Error(`random_track failed: ${error.message}`);
   if (!trackId) return null; // empty library / empty sub-mode
@@ -116,10 +125,22 @@ export async function getEndlessModes(): Promise<EndlessModes> {
     (g) => ({ genre: g.genre, n: Number(g.n) }),
   );
 
+  const { data: hebGenreData } = await supabase.rpc("endless_genres", {
+    p_script: "hebrew",
+  });
+  const hebrewGenres = (
+    (hebGenreData ?? []) as { genre: string; n: number }[]
+  ).map((g) => ({ genre: g.genre, n: Number(g.n) }));
+
   const { data: artistData } = await supabase.rpc("endless_artists");
   const artists = ((artistData ?? []) as { artist: string; n: number }[]).map(
     (a) => ({ artist: a.artist, n: Number(a.n) }),
   );
 
-  return { hebrew: count ?? 0, genres, artists };
+  const { data: decadeData } = await supabase.rpc("endless_decades");
+  const decades = ((decadeData ?? []) as { decade: number; n: number }[]).map(
+    (d) => ({ decade: d.decade, n: Number(d.n) }),
+  );
+
+  return { hebrew: count ?? 0, genres, hebrewGenres, artists, decades };
 }

@@ -61,18 +61,22 @@ export interface TurnResult {
   answer: Answer | null;
 }
 
-/** Endless-mode sub-mode: whole library, Hebrew, one genre, or one artist. */
+/** Endless-mode sub-mode: whole library, Hebrew, a genre, an artist, etc. */
 export type EndlessFilter =
   | { kind: "all" }
   | { kind: "hebrew" }
   | { kind: "genre"; genre: string }
-  | { kind: "artist"; artist: string };
+  | { kind: "hebrew_genre"; genre: string }
+  | { kind: "artist"; artist: string }
+  | { kind: "decade"; decade: number };
 
 /** Available Endless sub-modes, for the mode picker. */
 export interface EndlessModes {
   hebrew: number;
   genres: { genre: string; n: number }[];
+  hebrewGenres: { genre: string; n: number }[];
   artists: { artist: string; n: number }[];
+  decades: { decade: number; n: number }[];
 }
 
 /** One past daily puzzle, listed in the archive. */

@@ -6,6 +6,8 @@ YouTube-sourced tracks carry no genre (it is an iTunes-only field), and until
 this script runs no track has a release_year. Resolution runs cheapest tier
 first:
 
+  Tier 0 (free, instant): canonicalize every existing genre via genre_rules
+          (folds "Hard Rock" into "Rock", "Rap" into "Hip-Hop/Rap", etc.).
   Tier 1 (genre, free, instant): for every track missing a genre, copy the
           most common genre used by other tracks from the same artist.
   Tier 2 (genre + year, free, rate-limited): re-query the iTunes Search API
@@ -22,7 +24,8 @@ every track, so a crash or rate-limit just means re-running the script.
 
 Usage:
     python backfill_metadata.py
-    python backfill_metadata.py --reset      # ignore the checkpoint
+    python backfill_metadata.py --reset            # ignore the checkpoint
+    python backfill_metadata.py --normalize-only   # just re-run Tier 0
 """
 from __future__ import annotations
 
@@ -38,6 +41,7 @@ import requests
 from dotenv import load_dotenv
 from supabase import create_client
 
+from genre_rules import canonical_genre, is_mizrahi_artist
 from ingest import (
     ITUNES_COUNTRY,
     ITUNES_DELAY,
@@ -87,7 +91,7 @@ def itunes_metadata(artist: str, title: str) -> dict:
     ]
     r = (originals or matches)[0]
     return {
-        "genre": clean(r.get("primaryGenreName")) or None,
+        "genre": canonical_genre(clean(r.get("primaryGenreName"))),
         "year": _year_from(r.get("releaseDate")),
     }
 
@@ -133,6 +137,8 @@ def parse_args():
     p = argparse.ArgumentParser(description="Backfill genre + release_year")
     p.add_argument("--reset", action="store_true",
                    help="ignore the checkpoint and redo every iTunes lookup")
+    p.add_argument("--normalize-only", action="store_true",
+                   help="only canonicalize existing genres (Tier 0), then exit")
     return p.parse_args()
 
 
@@ -155,6 +161,35 @@ def main():
 
     tracks = fetch_all_tracks(supabase)
     print(f"Loaded {len(tracks)} tracks.\n")
+
+    # --- Tier 0: canonicalize existing genres ------------------------------
+    tier0 = 0
+    for t in tracks:
+        g = t.get("genre")
+        if g:
+            canon = canonical_genre(g)
+            if canon != g:
+                supabase.table("tracks").update({"genre": canon}).eq(
+                    "id", t["id"]
+                ).execute()
+                t["genre"] = canon
+                tier0 += 1
+    print(f"Tier 0 (normalize genres): updated {tier0} genres.\n")
+
+    # --- Tier 0.5: tag tracks by known Mizrahi artists ---------------------
+    mizrahi = 0
+    for t in tracks:
+        if is_mizrahi_artist(t["artist"]) and t.get("genre") != "Mizrahi":
+            supabase.table("tracks").update({"genre": "Mizrahi"}).eq(
+                "id", t["id"]
+            ).execute()
+            t["genre"] = "Mizrahi"
+            mizrahi += 1
+    print(f"Tier 0.5 (Mizrahi tagging): tagged {mizrahi} tracks.\n")
+
+    if args.normalize_only:
+        print("Done (normalize-only).")
+        return
 
     # --- Tier 1: propagate genre from same-artist tracks --------------------
     by_artist: dict[str, Counter] = {}

@@ -15,13 +15,17 @@ import { GameBoard } from "./GameBoard";
 
 function modeKey(f: EndlessFilter): string {
   if (f.kind === "genre") return `genre:${f.genre}`;
+  if (f.kind === "hebrew_genre") return `hebrew_genre:${f.genre}`;
   if (f.kind === "artist") return `artist:${f.artist}`;
+  if (f.kind === "decade") return `decade:${f.decade}`;
   return f.kind;
 }
 function modeLabel(f: EndlessFilter): string {
   if (f.kind === "all") return "All songs";
   if (f.kind === "hebrew") return "Hebrew";
   if (f.kind === "genre") return f.genre;
+  if (f.kind === "hebrew_genre") return `Hebrew · ${f.genre}`;
+  if (f.kind === "decade") return `${f.decade}s`;
   return f.artist;
 }
 function bestKey(f: EndlessFilter): string {

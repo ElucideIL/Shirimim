@@ -11,8 +11,9 @@ flush, so a crash or rate-limit just means re-running the script.
 
 Usage:
     python ingest.py seed.csv
-    python ingest.py sample_seed.csv          # quick smoke test
-    python ingest.py seed.csv --reset         # ignore saved progress
+    python ingest.py sample_seed.csv               # quick smoke test
+    python ingest.py seed.csv --reset              # ignore saved progress
+    python ingest.py mizrahi.csv --genre Mizrahi   # force every row's genre
 """
 from __future__ import annotations
 
@@ -35,6 +36,8 @@ try:
     import yt_dlp
 except ImportError:
     yt_dlp = None
+
+from genre_rules import canonical_genre, is_mizrahi_artist
 
 # ---------------------------------------------------------------------------
 # Config
@@ -240,7 +243,7 @@ def itunes_lookup(artist: str, title: str):
         "preview_url": r.get("previewUrl"),
         "youtube_id": None,
         "artwork_url": artwork or None,
-        "genre": clean(r.get("primaryGenreName")) or None,
+        "genre": canonical_genre(clean(r.get("primaryGenreName"))),
         "release_year": _year_from(r.get("releaseDate")),
         "script": detect_script(f"{final_artist} {final_title}"),
     }
@@ -366,6 +369,9 @@ def parse_args():
                    help="CSV file inside ingest/ (or an absolute path)")
     p.add_argument("--reset", action="store_true",
                    help="ignore saved progress and start from row 1")
+    p.add_argument("--genre", default=None,
+                   help="force every track from this CSV to this genre "
+                        "(e.g. --genre Mizrahi); overrides the iTunes genre")
     return p.parse_args()
 
 
@@ -454,6 +460,10 @@ def main():
                 log_unresolved(artist, title, "no playable source found")
                 print("  -> unresolved")
             else:
+                if args.genre:
+                    record["genre"] = args.genre
+                elif is_mizrahi_artist(record["artist"]):
+                    record["genre"] = "Mizrahi"
                 stats[record["source"]] += 1
                 batch.append(record)
                 print(f"  -> {record['source']}")

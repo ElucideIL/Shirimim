@@ -118,12 +118,15 @@ $$;
 -- Drop older signatures so re-running this file never leaves stale overloads.
 drop function if exists random_track(uuid);
 drop function if exists random_track(uuid, text, text);
+drop function if exists random_track(uuid, text, text, text);
 
 create or replace function random_track(
   exclude_id uuid default null,
   p_genre    text default null,
   p_script   text default null,
-  p_artist   text default null
+  p_artist   text default null,
+  p_year_min int  default null,
+  p_year_max int  default null
 )
 returns uuid
 language sql
@@ -131,9 +134,11 @@ as $$
   select id
   from tracks
   where (exclude_id is null or id <> exclude_id)
-    and (p_genre  is null or genre  = p_genre)
-    and (p_script is null or script = p_script)
-    and (p_artist is null or lower(artist) = lower(p_artist))
+    and (p_genre    is null or genre  = p_genre)
+    and (p_script   is null or script = p_script)
+    and (p_artist   is null or lower(artist) = lower(p_artist))
+    and (p_year_min is null or release_year >= p_year_min)
+    and (p_year_max is null or release_year <= p_year_max)
   order by random()
   limit 1;
 $$;
@@ -141,13 +146,18 @@ $$;
 -- ----------------------------------------------------------------------------
 -- endless_genres: genres with enough tracks to make a fun Endless sub-mode.
 -- ----------------------------------------------------------------------------
-create or replace function endless_genres()
+-- Optional p_script filters to one writing system (e.g. 'hebrew') so the
+-- Endless picker can offer Hebrew-only genre sub-modes.
+drop function if exists endless_genres();
+
+create or replace function endless_genres(p_script text default null)
 returns table (genre text, n bigint)
 language sql
 as $$
   select genre, count(*) as n
   from tracks
   where genre is not null
+    and (p_script is null or script = p_script)
   group by genre
   having count(*) >= 10
   order by n desc;
@@ -166,6 +176,21 @@ as $$
   having count(*) >= 5
   order by n desc, artist
   limit 30;
+$$;
+
+-- ----------------------------------------------------------------------------
+-- endless_decades: decades with enough dated tracks for an Endless sub-mode.
+-- ----------------------------------------------------------------------------
+create or replace function endless_decades()
+returns table (decade int, n bigint)
+language sql
+as $$
+  select (release_year / 10) * 10 as decade, count(*) as n
+  from tracks
+  where release_year is not null
+  group by (release_year / 10) * 10
+  having count(*) >= 10
+  order by decade desc;
 $$;
 
 -- ----------------------------------------------------------------------------

@@ -1,11 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { getEndlessModes } from "@/actions/endless";
 import type { EndlessFilter, EndlessModes } from "@/lib/types";
 
-/** Sub-mode picker shown when entering Endless: All / Hebrew / by genre. */
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <>
+      <p className="mt-2 text-xs tracking-widest text-white/35 uppercase">
+        {title}
+      </p>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </>
+  );
+}
+
+function Chip({
+  label,
+  n,
+  onClick,
+}: {
+  label: string;
+  n: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+    >
+      {label} <span className="text-white/40">· {n}</span>
+    </button>
+  );
+}
+
+/** Sub-mode picker shown when entering Endless: all / genre / Hebrew / etc. */
 export function EndlessModePicker({
   onPick,
 }: {
@@ -16,7 +47,15 @@ export function EndlessModePicker({
   useEffect(() => {
     getEndlessModes()
       .then(setModes)
-      .catch(() => setModes({ hebrew: 0, genres: [], artists: [] }));
+      .catch(() =>
+        setModes({
+          hebrew: 0,
+          genres: [],
+          hebrewGenres: [],
+          artists: [],
+          decades: [],
+        }),
+      );
   }, []);
 
   return (
@@ -34,7 +73,7 @@ export function EndlessModePicker({
         </Link>
       </header>
 
-      <div className="flex flex-1 flex-col gap-3 pt-4">
+      <div className="flex flex-1 flex-col gap-3 pt-4 pb-8">
         <p className="text-sm text-white/50">
           Pick a mode — guess songs back to back until you miss one.
         </p>
@@ -47,54 +86,61 @@ export function EndlessModePicker({
           All songs
         </button>
 
-        {modes && modes.hebrew > 0 && (
-          <button
-            type="button"
-            onClick={() => onPick({ kind: "hebrew" })}
-            className="w-full rounded-xl border border-white/15 px-4 py-3 text-sm font-medium hover:bg-white/10"
-          >
-            Hebrew songs <span className="text-white/40">· {modes.hebrew}</span>
-          </button>
+        {modes && modes.genres.length > 0 && (
+          <Section title="By genre">
+            {modes.genres.map((g) => (
+              <Chip
+                key={g.genre}
+                label={g.genre}
+                n={g.n}
+                onClick={() => onPick({ kind: "genre", genre: g.genre })}
+              />
+            ))}
+          </Section>
         )}
 
-        {modes && modes.genres.length > 0 && (
-          <>
-            <p className="mt-2 text-xs tracking-widest text-white/35 uppercase">
-              By genre
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {modes.genres.map((g) => (
-                <button
-                  key={g.genre}
-                  type="button"
-                  onClick={() => onPick({ kind: "genre", genre: g.genre })}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
-                >
-                  {g.genre} <span className="text-white/40">· {g.n}</span>
-                </button>
-              ))}
-            </div>
-          </>
+        {modes && modes.hebrew > 0 && (
+          <Section title="Hebrew">
+            <Chip
+              label="All Hebrew"
+              n={modes.hebrew}
+              onClick={() => onPick({ kind: "hebrew" })}
+            />
+            {modes.hebrewGenres.map((g) => (
+              <Chip
+                key={g.genre}
+                label={g.genre}
+                n={g.n}
+                onClick={() => onPick({ kind: "hebrew_genre", genre: g.genre })}
+              />
+            ))}
+          </Section>
+        )}
+
+        {modes && modes.decades.length > 0 && (
+          <Section title="By decade">
+            {modes.decades.map((d) => (
+              <Chip
+                key={d.decade}
+                label={`${d.decade}s`}
+                n={d.n}
+                onClick={() => onPick({ kind: "decade", decade: d.decade })}
+              />
+            ))}
+          </Section>
         )}
 
         {modes && modes.artists.length > 0 && (
-          <>
-            <p className="mt-2 text-xs tracking-widest text-white/35 uppercase">
-              By artist
-            </p>
-            <div className="flex flex-wrap gap-2 pb-6">
-              {modes.artists.map((a) => (
-                <button
-                  key={a.artist}
-                  type="button"
-                  onClick={() => onPick({ kind: "artist", artist: a.artist })}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
-                >
-                  {a.artist} <span className="text-white/40">· {a.n}</span>
-                </button>
-              ))}
-            </div>
-          </>
+          <Section title="By artist">
+            {modes.artists.map((a) => (
+              <Chip
+                key={a.artist}
+                label={a.artist}
+                n={a.n}
+                onClick={() => onPick({ kind: "artist", artist: a.artist })}
+              />
+            ))}
+          </Section>
         )}
 
         {!modes && <p className="text-sm text-white/30">Loading modes…</p>}
