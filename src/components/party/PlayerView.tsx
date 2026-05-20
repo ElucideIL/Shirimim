@@ -4,20 +4,22 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   joinRoom,
+  sendReaction,
   submitPartyAnswer,
   useDoublePoints,
   useFiftyFifty,
 } from "@/actions/party";
-import { PARTY_ROUND_MS } from "@/lib/constants";
 import { usePartyRoom } from "@/lib/usePartyRoom";
+import { AnswerBreakdown } from "./AnswerBreakdown";
 import { AnswerButtons } from "./AnswerButtons";
 import { Leaderboard } from "./Leaderboard";
 import { Podium } from "./Podium";
+import { ReactionBar, ReactionOverlay } from "./Reactions";
 import { RoundAudio } from "./RoundAudio";
 import { RoundTimer } from "./RoundTimer";
 
 export function PlayerView({ code }: { code: string }) {
-  const { roster, round, reveal, phase } = usePartyRoom(code);
+  const { roster, round, reveal, reactions, phase } = usePartyRoom(code);
 
   const [hydrated, setHydrated] = useState(false);
   const [playerId, setPlayerId] = useState<string | null>(null);
@@ -95,6 +97,14 @@ export function PlayerView({ code }: { code: string }) {
     }
   }, [code, playerId, usedDouble, picked]);
 
+  const handleReact = useCallback(
+    (emoji: string) => {
+      if (!playerId) return;
+      void sendReaction(code, playerId, emoji);
+    },
+    [code, playerId],
+  );
+
   const shell = "mx-auto flex min-h-dvh w-full max-w-md flex-col px-5";
 
   if (!hydrated) return <main className={shell} />;
@@ -166,9 +176,14 @@ export function PlayerView({ code }: { code: string }) {
       {/* ---- Round ---- */}
       {phase === "round" && round && (
         <div className="flex flex-1 flex-col gap-5 pt-2">
-          <RoundAudio key={round.round} track={round.audio} muted={muted} />
+          <RoundAudio
+            key={round.round}
+            track={round.audio}
+            muted={muted}
+            durationMs={round.roundMs}
+          />
           <div className="flex items-center justify-between">
-            <RoundTimer key={round.round} durationMs={PARTY_ROUND_MS} />
+            <RoundTimer key={round.round} durationMs={round.roundMs} />
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}
@@ -216,6 +231,9 @@ export function PlayerView({ code }: { code: string }) {
               Answer locked in — hang tight!
             </p>
           )}
+          <div className="mt-auto pb-2">
+            <ReactionBar onReact={handleReact} />
+          </div>
         </div>
       )}
 
@@ -239,7 +257,18 @@ export function PlayerView({ code }: { code: string }) {
             <p className="mt-2 text-lg font-bold">{reveal.answer.title}</p>
             <p className="text-sm text-white/55">{reveal.answer.artist}</p>
           </div>
+          {round && (
+            <AnswerBreakdown
+              options={round.options}
+              counts={reveal.optionCounts}
+              correctId={reveal.correctOptionId}
+              pickedId={picked}
+            />
+          )}
           <Leaderboard entries={reveal.leaderboard} youId={playerId} />
+          <div className="mt-auto pb-2">
+            <ReactionBar onReact={handleReact} />
+          </div>
         </div>
       )}
 
@@ -248,6 +277,7 @@ export function PlayerView({ code }: { code: string }) {
         <div className="flex flex-1 flex-col gap-6 pt-4">
           <p className="text-center text-xl font-extrabold">Final results</p>
           <Podium entries={reveal.leaderboard} youId={playerId} />
+          <ReactionBar onReact={handleReact} />
           <Link
             href="/"
             className="mt-auto mb-6 w-full rounded-xl border border-white/15 px-4 py-3 text-center text-sm text-white/80 hover:bg-white/10"
@@ -256,6 +286,8 @@ export function PlayerView({ code }: { code: string }) {
           </Link>
         </div>
       )}
+
+      <ReactionOverlay reactions={reactions} />
     </main>
   );
 }

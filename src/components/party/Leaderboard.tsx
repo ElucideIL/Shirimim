@@ -22,6 +22,11 @@ export function Leaderboard({ entries, youId }: Props) {
         >
           <span className="w-6 text-sm font-bold text-white/40">{e.rank}</span>
           <span className="flex-1 truncate text-sm font-medium">{e.name}</span>
+          {e.streak >= 2 && (
+            <span className="shrink-0 text-xs font-semibold text-orange-300">
+              🔥 {e.streak}
+            </span>
+          )}
           <span className="text-sm font-bold tabular-nums text-emerald-300">
             {e.score}
           </span>

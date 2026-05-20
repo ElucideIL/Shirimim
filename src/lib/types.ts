@@ -135,6 +135,8 @@ export interface PartyPlayer {
   id: string;
   name: string;
   score: number;
+  /** Consecutive correct answers (for streak bonuses). */
+  streak: number;
 }
 
 export interface LeaderboardEntry {
@@ -142,6 +144,8 @@ export interface LeaderboardEntry {
   name: string;
   score: number;
   rank: number;
+  /** Consecutive correct answers. */
+  streak: number;
 }
 
 /** START_ROUND payload — audio + 4 options, never which one is correct. */
@@ -151,6 +155,8 @@ export interface PartyRound {
   options: PartyOption[];
   audio: ClientTrack;
   startedAt: number; // server epoch ms
+  /** Length of this round's answer window + clip, in ms (host-configurable). */
+  roundMs: number;
 }
 
 /** END_ROUND / GAME_OVER payload — the reveal once the round has closed. */
@@ -160,6 +166,16 @@ export interface RoundReveal {
   answer: Answer;
   leaderboard: LeaderboardEntry[];
   gameOver: boolean;
+  /** How many players picked each option id, for the answer breakdown. */
+  optionCounts: Record<string, number>;
+}
+
+/** A floating emoji reaction flung into the room by a player. */
+export interface PartyReaction {
+  /** Client-assigned id, just for the React key + expiry. */
+  id: number;
+  emoji: string;
+  name: string;
 }
 
 /** Snapshot from getRoomState for refresh / late-join. */
@@ -174,4 +190,5 @@ export type PartyEventName =
   | "PLAYER_JOINED"
   | "START_ROUND"
   | "PLAYER_ANSWERED"
-  | "END_ROUND";
+  | "END_ROUND"
+  | "REACTION";

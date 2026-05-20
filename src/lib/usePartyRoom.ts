@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getRoomState } from "@/actions/party";
 import { getBrowserClient } from "./supabaseBrowser";
 import type {
   PartyPlayer,
+  PartyReaction,
   PartyRound,
   RoundReveal,
 } from "./types";
@@ -17,6 +18,8 @@ export interface PartyRoomState {
   round: PartyRound | null;
   reveal: RoundReveal | null;
   answeredCount: number;
+  /** Emoji reactions currently floating on screen (auto-expire). */
+  reactions: PartyReaction[];
   phase: PartyPhase;
 }
 
@@ -31,6 +34,8 @@ export function usePartyRoom(code: string): PartyRoomState {
   const [round, setRound] = useState<PartyRound | null>(null);
   const [reveal, setReveal] = useState<RoundReveal | null>(null);
   const [answeredCount, setAnsweredCount] = useState(0);
+  const [reactions, setReactions] = useState<PartyReaction[]>([]);
+  const reactionSeq = useRef(0);
 
   useEffect(() => {
     const supabase = getBrowserClient();
@@ -57,8 +62,17 @@ export function usePartyRoom(code: string): PartyRoomState {
             id: e.playerId,
             name: e.name,
             score: e.score,
+            streak: e.streak,
           })),
         );
+      })
+      .on("broadcast", { event: "REACTION" }, ({ payload }) => {
+        const r = payload as { emoji: string; name: string };
+        const id = ++reactionSeq.current;
+        setReactions((list) => [...list, { id, emoji: r.emoji, name: r.name }]);
+        window.setTimeout(() => {
+          setReactions((list) => list.filter((x) => x.id !== id));
+        }, 3500);
       })
       .subscribe((status) => {
         setConnected(status === "SUBSCRIBED");
@@ -83,5 +97,5 @@ export function usePartyRoom(code: string): PartyRoomState {
   else if (reveal && round && reveal.round === round.round) phase = "reveal";
   else if (round) phase = "round";
 
-  return { connected, roster, round, reveal, answeredCount, phase };
+  return { connected, roster, round, reveal, answeredCount, reactions, phase };
 }

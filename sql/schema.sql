@@ -234,8 +234,16 @@ create table if not exists rooms (
 );
 create index if not exists rooms_code_idx on rooms (code);
 
--- Optional genre lock — when set, every round pulls only from this genre.
-alter table rooms add column if not exists genre text;
+-- Optional category lock — when set, every round pulls only from this slice
+-- of the library (mirrors the Endless sub-modes). All NULL = whole library.
+alter table rooms add column if not exists genre    text;
+alter table rooms add column if not exists script   text;   -- 'hebrew'
+alter table rooms add column if not exists artist   text;
+alter table rooms add column if not exists year_min int;
+alter table rooms add column if not exists year_max int;
+
+-- Host-chosen seconds per round (the answer window + clip length).
+alter table rooms add column if not exists round_seconds int not null default 15;
 
 -- ----------------------------------------------------------------------------
 -- players: one per participant in a room.
@@ -255,6 +263,10 @@ create index if not exists players_room_idx on players (room_id);
 alter table players add column if not exists used_fifty   boolean not null default false;
 alter table players add column if not exists used_double  boolean not null default false;
 alter table players add column if not exists double_round int     not null default 0;
+
+-- Streak scoring + the option this player last picked (for the answer breakdown).
+alter table players add column if not exists streak    int  not null default 0;
+alter table players add column if not exists last_pick text;
 
 -- ----------------------------------------------------------------------------
 -- party_distractors: up to p_count wrong-answer tracks for a Party round.

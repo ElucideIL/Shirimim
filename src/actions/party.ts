@@ -5,11 +5,16 @@ import {
   PARTY_MAX_POINTS,
   PARTY_MAX_ROUNDS,
   PARTY_MIN_ROUNDS,
-  PARTY_ROUND_MS,
+  PARTY_REACTIONS,
+  PARTY_ROUND_SECONDS,
+  PARTY_ROUND_SECONDS_CHOICES,
+  PARTY_STREAK_CAP,
+  PARTY_STREAK_STEP,
 } from "@/lib/constants";
 import { getServiceClient } from "@/lib/supabase";
 import type {
   ClientTrack,
+  EndlessFilter,
   LeaderboardEntry,
   PartyEventName,
   PartyOption,
@@ -72,13 +77,14 @@ async function rosterOf(roomId: string): Promise<PartyPlayer[]> {
   const supabase = getServiceClient();
   const { data } = await supabase
     .from("players")
-    .select("id, name, score")
+    .select("id, name, score, streak")
     .eq("room_id", roomId)
     .order("created_at", { ascending: true });
   return (data ?? []).map((p) => ({
     id: p.id as string,
     name: p.name as string,
     score: p.score as number,
+    streak: (p.streak as number) ?? 0,
   }));
 }
 
@@ -90,31 +96,56 @@ function leaderboardOf(roster: PartyPlayer[]): LeaderboardEntry[] {
       name: p.name,
       score: p.score,
       rank: i + 1,
+      streak: p.streak,
     }));
 }
 
-/** Genres with enough tracks to host a genre-locked Party game. */
-export async function getPartyGenres(): Promise<
-  { genre: string; n: number }[]
-> {
-  const { data } = await getServiceClient().rpc("endless_genres");
-  return ((data ?? []) as { genre: string; n: number }[]).map((g) => ({
-    genre: g.genre,
-    n: Number(g.n),
-  }));
+/** Translate a category filter into the room's filter columns. */
+function filterColumns(filter: EndlessFilter): {
+  genre: string | null;
+  script: string | null;
+  artist: string | null;
+  year_min: number | null;
+  year_max: number | null;
+} {
+  const cols = {
+    genre: null as string | null,
+    script: null as string | null,
+    artist: null as string | null,
+    year_min: null as number | null,
+    year_max: null as number | null,
+  };
+  if (filter.kind === "genre") cols.genre = filter.genre;
+  else if (filter.kind === "hebrew") cols.script = "hebrew";
+  else if (filter.kind === "hebrew_genre") {
+    cols.genre = filter.genre;
+    cols.script = "hebrew";
+  } else if (filter.kind === "artist") cols.artist = filter.artist;
+  else if (filter.kind === "decade") {
+    cols.year_min = filter.decade;
+    cols.year_max = filter.decade + 9;
+  }
+  return cols;
 }
 
 /** Host creates a room. Returns the join code and a secret host token. */
 export async function createRoom(
   maxRounds: number,
-  genre?: string | null,
+  filter: EndlessFilter,
+  roundSeconds: number,
 ): Promise<{ code: string; hostId: string }> {
   const supabase = getServiceClient();
   const rounds = Math.min(
     PARTY_MAX_ROUNDS,
     Math.max(PARTY_MIN_ROUNDS, Math.round(maxRounds) || 10),
   );
+  const seconds = (
+    PARTY_ROUND_SECONDS_CHOICES as readonly number[]
+  ).includes(roundSeconds)
+    ? roundSeconds
+    : PARTY_ROUND_SECONDS;
   const hostId = crypto.randomUUID();
+  const cols = filterColumns(filter);
 
   for (let attempt = 0; attempt < 6; attempt++) {
     const code = makeCode();
@@ -123,7 +154,8 @@ export async function createRoom(
       host_id: hostId,
       status: "waiting",
       max_rounds: rounds,
-      genre: genre || null,
+      round_seconds: seconds,
+      ...cols,
     });
     if (!error) return { code, hostId };
     if (error.code !== "23505") {
@@ -170,7 +202,9 @@ export async function startRound(code: string, hostId: string): Promise<void> {
   const supabase = getServiceClient();
   const { data: room } = await supabase
     .from("rooms")
-    .select("id, host_id, status, current_round, max_rounds, genre")
+    .select(
+      "id, host_id, status, current_round, max_rounds, round_seconds, genre, script, artist, year_min, year_max",
+    )
     .eq("code", code)
     .single();
   if (!room) throw new Error("Room not found.");
@@ -184,8 +218,12 @@ export async function startRound(code: string, hostId: string): Promise<void> {
   const { data: correctId } = await supabase.rpc("random_track", {
     exclude_id: null,
     p_genre: room.genre ?? null,
+    p_script: room.script ?? null,
+    p_artist: room.artist ?? null,
+    p_year_min: room.year_min ?? null,
+    p_year_max: room.year_max ?? null,
   });
-  if (!correctId) throw new Error("The song library is empty.");
+  if (!correctId) throw new Error("No songs match this room's category.");
 
   const { data: correct } = await supabase
     .from("tracks")
@@ -208,6 +246,7 @@ export async function startRound(code: string, hostId: string): Promise<void> {
 
   const nextRound = room.current_round + 1;
   const startedAt = Date.now();
+  const roundMs = (room.round_seconds ?? PARTY_ROUND_SECONDS) * 1000;
   const audio: ClientTrack = {
     source: correct.source,
     previewUrl: correct.preview_url,
@@ -232,6 +271,7 @@ export async function startRound(code: string, hostId: string): Promise<void> {
     options,
     audio,
     startedAt,
+    roundMs,
   });
 }
 
@@ -244,7 +284,9 @@ export async function submitPartyAnswer(
   const supabase = getServiceClient();
   const { data: room } = await supabase
     .from("rooms")
-    .select("id, status, current_round, current_answer_id, round_started_at")
+    .select(
+      "id, status, current_round, current_answer_id, round_started_at, round_seconds",
+    )
     .eq("code", code)
     .single();
   if (!room || room.status !== "playing" || !room.round_started_at) {
@@ -253,7 +295,9 @@ export async function submitPartyAnswer(
 
   const { data: player } = await supabase
     .from("players")
-    .select("id, room_id, name, score, last_answered_round, double_round")
+    .select(
+      "id, room_id, name, score, streak, last_answered_round, double_round",
+    )
     .eq("id", playerId)
     .single();
   if (!player || player.room_id !== room.id) return { accepted: false };
@@ -262,19 +306,29 @@ export async function submitPartyAnswer(
   }
 
   const correct = pickedOptionId === room.current_answer_id;
+  const roundMs = (room.round_seconds ?? PARTY_ROUND_SECONDS) * 1000;
   const elapsed = Date.now() - new Date(room.round_started_at).getTime();
-  const remaining = Math.min(PARTY_ROUND_MS, Math.max(0, PARTY_ROUND_MS - elapsed));
-  const doubled = player.double_round === room.current_round;
-  let gained = correct
-    ? Math.round(PARTY_MAX_POINTS * (remaining / PARTY_ROUND_MS))
+  const remaining = Math.min(roundMs, Math.max(0, roundMs - elapsed));
+
+  // Speed points + an escalating bonus for a correct-answer streak.
+  const newStreak = correct ? player.streak + 1 : 0;
+  const base = correct
+    ? Math.round(PARTY_MAX_POINTS * (remaining / roundMs))
     : 0;
+  const streakBonus = correct
+    ? Math.min(newStreak - 1, PARTY_STREAK_CAP) * PARTY_STREAK_STEP
+    : 0;
+  const doubled = player.double_round === room.current_round;
+  let gained = base + streakBonus;
   if (doubled) gained *= 2;
 
   await supabase
     .from("players")
     .update({
       score: player.score + gained,
+      streak: newStreak,
       last_answered_round: room.current_round,
+      last_pick: pickedOptionId,
     })
     .eq("id", playerId);
 
@@ -381,6 +435,18 @@ export async function endRound(code: string, hostId: string): Promise<void> {
 
   const leaderboard = leaderboardOf(await rosterOf(room.id));
 
+  // Tally which option each player who answered this round picked.
+  const { data: picks } = await supabase
+    .from("players")
+    .select("last_pick")
+    .eq("room_id", room.id)
+    .eq("last_answered_round", room.current_round);
+  const optionCounts: Record<string, number> = {};
+  for (const p of picks ?? []) {
+    const id = p.last_pick as string | null;
+    if (id) optionCounts[id] = (optionCounts[id] ?? 0) + 1;
+  }
+
   let answer = { artist: "", title: "", artworkUrl: null as string | null };
   if (room.current_answer_id) {
     const { data: t } = await supabase
@@ -404,8 +470,32 @@ export async function endRound(code: string, hostId: string): Promise<void> {
     answer,
     leaderboard,
     gameOver,
+    optionCounts,
   };
   await broadcastToRoom(code, "END_ROUND", reveal);
+}
+
+/** A player flings an emoji reaction into the room (broadcast to everyone). */
+export async function sendReaction(
+  code: string,
+  playerId: string,
+  emoji: string,
+): Promise<void> {
+  if (!(PARTY_REACTIONS as readonly string[]).includes(emoji)) return;
+  const supabase = getServiceClient();
+  const { data: room } = await supabase
+    .from("rooms")
+    .select("id")
+    .eq("code", code)
+    .single();
+  if (!room) return;
+  const { data: player } = await supabase
+    .from("players")
+    .select("name, room_id")
+    .eq("id", playerId)
+    .single();
+  if (!player || player.room_id !== room.id) return;
+  await broadcastToRoom(code, "REACTION", { emoji, name: player.name });
 }
 
 /** Snapshot for a client that just loaded or refreshed. */

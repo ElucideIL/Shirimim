@@ -38,14 +38,21 @@ export const EPOCH = "2026-05-20";
 export const GAME_TZ = "Asia/Jerusalem";
 
 // --- Party Mode ---
-/** Length of one Party round's audio clip + answer window. */
+/** Default Party round length; the host can override it (see _CHOICES). */
 export const PARTY_ROUND_SECONDS = 15;
 export const PARTY_ROUND_MS = PARTY_ROUND_SECONDS * 1000;
+/** Round lengths the host may pick from, in seconds. */
+export const PARTY_ROUND_SECONDS_CHOICES = [10, 15, 20] as const;
 /** Max points for an instant correct answer. */
 export const PARTY_MAX_POINTS = 1000;
+/** Streak bonus: +STEP points per consecutive correct answer, capped at CAP. */
+export const PARTY_STREAK_STEP = 100;
+export const PARTY_STREAK_CAP = 5;
 /** How long the reveal + leaderboard shows between rounds. */
 export const PARTY_REVEAL_SECONDS = 5;
 /** Round-count bounds the host can choose when creating a room. */
 export const PARTY_DEFAULT_ROUNDS = 10;
 export const PARTY_MIN_ROUNDS = 3;
 export const PARTY_MAX_ROUNDS = 20;
+/** The emoji a player can fling into the room. */
+export const PARTY_REACTIONS = ["🔥", "😂", "😮", "👏", "💀"] as const;

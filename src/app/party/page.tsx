@@ -3,33 +3,56 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { createRoom, getPartyGenres } from "@/actions/party";
+import { getEndlessModes } from "@/actions/endless";
+import { createRoom } from "@/actions/party";
 import {
   PARTY_DEFAULT_ROUNDS,
   PARTY_MAX_ROUNDS,
   PARTY_MIN_ROUNDS,
+  PARTY_ROUND_SECONDS,
+  PARTY_ROUND_SECONDS_CHOICES,
 } from "@/lib/constants";
+import type { EndlessFilter, EndlessModes } from "@/lib/types";
+
+/** Decode the category <select> value back into a library filter. */
+function parseCategory(v: string): EndlessFilter {
+  if (v === "all") return { kind: "all" };
+  if (v === "hebrew") return { kind: "hebrew" };
+  const sep = v.indexOf(":");
+  const kind = v.slice(0, sep);
+  const rest = v.slice(sep + 1);
+  if (kind === "genre") return { kind: "genre", genre: rest };
+  if (kind === "hgenre") return { kind: "hebrew_genre", genre: rest };
+  if (kind === "artist") return { kind: "artist", artist: rest };
+  if (kind === "decade") return { kind: "decade", decade: Number(rest) };
+  return { kind: "all" };
+}
 
 export default function PartyEntryPage() {
   const router = useRouter();
   const [rounds, setRounds] = useState(PARTY_DEFAULT_ROUNDS);
-  const [genre, setGenre] = useState("");
-  const [genres, setGenres] = useState<{ genre: string; n: number }[]>([]);
+  const [roundSeconds, setRoundSeconds] = useState(PARTY_ROUND_SECONDS);
+  const [category, setCategory] = useState("all");
+  const [modes, setModes] = useState<EndlessModes | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getPartyGenres()
-      .then(setGenres)
-      .catch(() => setGenres([]));
+    getEndlessModes()
+      .then(setModes)
+      .catch(() => setModes(null));
   }, []);
 
   async function handleCreate() {
     setBusy(true);
     setError(null);
     try {
-      const room = await createRoom(rounds, genre || null);
+      const room = await createRoom(
+        rounds,
+        parseCategory(category),
+        roundSeconds,
+      );
       sessionStorage.setItem(`party:${room.code}:host`, room.hostId);
       router.push(`/party/${room.code}`);
     } catch (err) {
@@ -42,6 +65,9 @@ export default function PartyEntryPage() {
     const clean = code.trim().toUpperCase();
     if (clean.length === 6) router.push(`/party/${clean}`);
   }
+
+  const field =
+    "w-44 rounded-lg border border-white/10 bg-neutral-800 px-3 py-1.5 text-white outline-none focus:border-white/30";
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5">
@@ -66,6 +92,7 @@ export default function PartyEntryPage() {
         {/* Create */}
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
           <h2 className="text-sm font-semibold">Host a new game</h2>
+
           <label className="mt-3 flex items-center justify-between text-sm text-white/60">
             Rounds
             <input
@@ -77,23 +104,72 @@ export default function PartyEntryPage() {
               className="w-20 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-center text-white outline-none focus:border-white/30"
             />
           </label>
-          {genres.length > 0 && (
-            <label className="mt-3 flex items-center justify-between text-sm text-white/60">
-              Genre
-              <select
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                className="w-40 rounded-lg border border-white/10 bg-neutral-800 px-3 py-1.5 text-white outline-none focus:border-white/30"
-              >
-                <option value="">All genres</option>
-                {genres.map((g) => (
-                  <option key={g.genre} value={g.genre}>
-                    {g.genre}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+
+          <label className="mt-3 flex items-center justify-between text-sm text-white/60">
+            Seconds per round
+            <select
+              value={roundSeconds}
+              onChange={(e) => setRoundSeconds(Number(e.target.value))}
+              className={field}
+            >
+              {PARTY_ROUND_SECONDS_CHOICES.map((s) => (
+                <option key={s} value={s}>
+                  {s} seconds
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="mt-3 flex items-center justify-between text-sm text-white/60">
+            Category
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className={field}
+            >
+              <optgroup label="Everything">
+                <option value="all">All songs</option>
+              </optgroup>
+              {modes && modes.hebrew > 0 && (
+                <optgroup label="Hebrew">
+                  <option value="hebrew">All Hebrew</option>
+                  {modes.hebrewGenres.map((g) => (
+                    <option key={g.genre} value={`hgenre:${g.genre}`}>
+                      Hebrew · {g.genre}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {modes && modes.genres.length > 0 && (
+                <optgroup label="Genres">
+                  {modes.genres.map((g) => (
+                    <option key={g.genre} value={`genre:${g.genre}`}>
+                      {g.genre}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {modes && modes.decades.length > 0 && (
+                <optgroup label="Decades">
+                  {modes.decades.map((d) => (
+                    <option key={d.decade} value={`decade:${d.decade}`}>
+                      {d.decade}s
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {modes && modes.artists.length > 0 && (
+                <optgroup label="Artists">
+                  {modes.artists.map((a) => (
+                    <option key={a.artist} value={`artist:${a.artist}`}>
+                      {a.artist}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          </label>
+
           <button
             type="button"
             onClick={handleCreate}

@@ -3,16 +3,19 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { endRound, startRound } from "@/actions/party";
-import { PARTY_REVEAL_SECONDS, PARTY_ROUND_MS } from "@/lib/constants";
+import { PARTY_REVEAL_SECONDS } from "@/lib/constants";
 import { usePartyRoom } from "@/lib/usePartyRoom";
+import { AnswerBreakdown } from "./AnswerBreakdown";
 import { AnswerButtons } from "./AnswerButtons";
 import { Leaderboard } from "./Leaderboard";
 import { Podium } from "./Podium";
+import { ReactionOverlay } from "./Reactions";
 import { RoundAudio } from "./RoundAudio";
 import { RoundTimer } from "./RoundTimer";
 
 export function HostView({ code, hostId }: { code: string; hostId: string }) {
-  const { roster, round, reveal, answeredCount, phase } = usePartyRoom(code);
+  const { roster, round, reveal, answeredCount, reactions, phase } =
+    usePartyRoom(code);
   const [busy, setBusy] = useState(false);
   const [nextReady, setNextReady] = useState(false);
   const endedRound = useRef(0);
@@ -122,10 +125,15 @@ export function HostView({ code, hostId }: { code: string; hostId: string }) {
       {/* ---- Round ---- */}
       {phase === "round" && round && (
         <div className="flex flex-1 flex-col gap-5 pt-2">
-          <RoundAudio key={round.round} track={round.audio} muted={false} />
+          <RoundAudio
+            key={round.round}
+            track={round.audio}
+            muted={false}
+            durationMs={round.roundMs}
+          />
           <RoundTimer
             key={round.round}
-            durationMs={PARTY_ROUND_MS}
+            durationMs={round.roundMs}
             onElapsed={triggerEnd}
           />
           <p className="text-center text-sm text-white/50">
@@ -166,6 +174,13 @@ export function HostView({ code, hostId }: { code: string; hostId: string }) {
             <p className="mt-3 text-lg font-bold">{reveal.answer.title}</p>
             <p className="text-sm text-white/55">{reveal.answer.artist}</p>
           </div>
+          {round && (
+            <AnswerBreakdown
+              options={round.options}
+              counts={reveal.optionCounts}
+              correctId={reveal.correctOptionId}
+            />
+          )}
           <Leaderboard entries={reveal.leaderboard} />
           <button
             type="button"
@@ -191,6 +206,8 @@ export function HostView({ code, hostId }: { code: string; hostId: string }) {
           </Link>
         </div>
       )}
+
+      <ReactionOverlay reactions={reactions} />
     </main>
   );
 }

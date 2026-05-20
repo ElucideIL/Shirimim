@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { PARTY_ROUND_MS } from "@/lib/constants";
 import { useAudioEngine } from "@/lib/audioEngine";
 import type { ClientTrack } from "@/lib/types";
 
@@ -9,14 +8,16 @@ interface Props {
   track: ClientTrack;
   /** When true, this device stays silent (host always plays; players opt in). */
   muted: boolean;
+  /** Length of the clip to play, in ms (the host-configured round length). */
+  durationMs: number;
 }
 
 /**
- * Plays one Party round's 15-second clip. Mount it with a per-round React key
- * so each round gets a fresh audio backend. Renders nothing — the YouTube
- * player lives in the permanent layout-level host (see audioEngine).
+ * Plays one Party round's clip. Mount it with a per-round React key so each
+ * round gets a fresh audio backend. Renders nothing — the YouTube player lives
+ * in the permanent layout-level host (see audioEngine).
  */
-export function RoundAudio({ track, muted }: Props) {
+export function RoundAudio({ track, muted, durationMs }: Props) {
   const { isReady, playSegment, stop } = useAudioEngine(track);
 
   useEffect(() => {
@@ -24,8 +25,8 @@ export function RoundAudio({ track, muted }: Props) {
       stop();
       return;
     }
-    if (isReady) playSegment(PARTY_ROUND_MS);
-  }, [muted, isReady, playSegment, stop]);
+    if (isReady) playSegment(durationMs);
+  }, [muted, isReady, playSegment, stop, durationMs]);
 
   return null;
 }
