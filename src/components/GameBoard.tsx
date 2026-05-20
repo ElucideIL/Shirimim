@@ -197,29 +197,41 @@ export function GameBoard({
           </h1>
           <span className="text-xs text-white/40">{headerLabel}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <nav className="flex flex-wrap items-center justify-end gap-1.5">
           {over && (
             <button
               type="button"
               onClick={() => setModalDismissed(false)}
-              className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-white/70 hover:bg-white/10"
+              className="rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
             >
               Result
             </button>
           )}
           <Link
             href={navHref}
-            className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-white/70 hover:bg-white/10"
+            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
           >
             {navLabel}
           </Link>
           <Link
+            href="/archive"
+            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+          >
+            Archive
+          </Link>
+          <Link
+            href="/stats"
+            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+          >
+            Stats
+          </Link>
+          <Link
             href="/party"
-            className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-white/70 hover:bg-white/10"
+            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
           >
             Party
           </Link>
-        </div>
+        </nav>
       </header>
 
       <ProgressBar positionMs={positionMs} unlockedMs={unlockedMs} />

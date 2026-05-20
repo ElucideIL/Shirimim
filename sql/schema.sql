@@ -113,12 +113,17 @@ $$;
 
 -- ----------------------------------------------------------------------------
 -- random_track: pick a random track, optionally excluding the previous one and
--- optionally filtered by genre and/or script (for Endless mode sub-modes).
+-- optionally filtered by genre, script and/or artist (Endless + Party modes).
 -- ----------------------------------------------------------------------------
+-- Drop older signatures so re-running this file never leaves stale overloads.
+drop function if exists random_track(uuid);
+drop function if exists random_track(uuid, text, text);
+
 create or replace function random_track(
   exclude_id uuid default null,
   p_genre    text default null,
-  p_script   text default null
+  p_script   text default null,
+  p_artist   text default null
 )
 returns uuid
 language sql
@@ -128,6 +133,7 @@ as $$
   where (exclude_id is null or id <> exclude_id)
     and (p_genre  is null or genre  = p_genre)
     and (p_script is null or script = p_script)
+    and (p_artist is null or lower(artist) = lower(p_artist))
   order by random()
   limit 1;
 $$;
@@ -148,6 +154,21 @@ as $$
 $$;
 
 -- ----------------------------------------------------------------------------
+-- endless_artists: artists with enough tracks for an Endless spotlight mode.
+-- ----------------------------------------------------------------------------
+create or replace function endless_artists()
+returns table (artist text, n bigint)
+language sql
+as $$
+  select artist, count(*) as n
+  from tracks
+  group by artist
+  having count(*) >= 5
+  order by n desc, artist
+  limit 30;
+$$;
+
+-- ----------------------------------------------------------------------------
 -- Row Level Security: enabled with no policies => no anon/public access.
 -- All app reads/writes go through the server using the service_role key,
 -- which bypasses RLS. Keeps the answer table un-dumpable from the browser.
@@ -159,12 +180,14 @@ alter table daily_songs enable row level security;
 -- PARTY MODE — real-time multiplayer
 -- ============================================================================
 
--- Distractor metadata on tracks (populated by the ingestion script).
-alter table tracks add column if not exists genre  text;
-alter table tracks add column if not exists script text;   -- hebrew | latin | other
+-- Distractor / filter metadata on tracks (populated by ingestion + backfill).
+alter table tracks add column if not exists genre        text;
+alter table tracks add column if not exists script       text;   -- hebrew | latin | other
+alter table tracks add column if not exists release_year int;    -- 4-digit year from iTunes
 
 create index if not exists tracks_genre_idx        on tracks (genre);
 create index if not exists tracks_script_idx       on tracks (script);
+create index if not exists tracks_release_year_idx on tracks (release_year);
 create index if not exists tracks_artist_lower_idx on tracks (lower(artist));
 
 -- ----------------------------------------------------------------------------
@@ -184,6 +207,9 @@ create table if not exists rooms (
   created_at        timestamptz not null default now()
 );
 create index if not exists rooms_code_idx on rooms (code);
+
+-- Optional genre lock — when set, every round pulls only from this genre.
+alter table rooms add column if not exists genre text;
 
 -- ----------------------------------------------------------------------------
 -- players: one per participant in a room.

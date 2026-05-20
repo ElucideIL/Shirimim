@@ -47,6 +47,7 @@ ingest/.venv/
 ingest/__pycache__/
 *.pyc
 ingest/progress_state.json
+ingest/genre_backfill_state.json
 ingest/unresolved.csv
 ingest/seed.csv
 ingest/song_library/

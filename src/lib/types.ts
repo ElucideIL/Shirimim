@@ -61,16 +61,24 @@ export interface TurnResult {
   answer: Answer | null;
 }
 
-/** Endless-mode sub-mode: the whole library, Hebrew only, or one genre. */
+/** Endless-mode sub-mode: whole library, Hebrew, one genre, or one artist. */
 export type EndlessFilter =
   | { kind: "all" }
   | { kind: "hebrew" }
-  | { kind: "genre"; genre: string };
+  | { kind: "genre"; genre: string }
+  | { kind: "artist"; artist: string };
 
 /** Available Endless sub-modes, for the mode picker. */
 export interface EndlessModes {
   hebrew: number;
   genres: { genre: string; n: number }[];
+  artists: { artist: string; n: number }[];
+}
+
+/** One past daily puzzle, listed in the archive. */
+export interface ArchiveEntry {
+  day: number;
+  date: string;
 }
 
 // ---------------------------------------------------------------------------

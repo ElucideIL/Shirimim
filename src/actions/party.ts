@@ -93,9 +93,21 @@ function leaderboardOf(roster: PartyPlayer[]): LeaderboardEntry[] {
     }));
 }
 
+/** Genres with enough tracks to host a genre-locked Party game. */
+export async function getPartyGenres(): Promise<
+  { genre: string; n: number }[]
+> {
+  const { data } = await getServiceClient().rpc("endless_genres");
+  return ((data ?? []) as { genre: string; n: number }[]).map((g) => ({
+    genre: g.genre,
+    n: Number(g.n),
+  }));
+}
+
 /** Host creates a room. Returns the join code and a secret host token. */
 export async function createRoom(
   maxRounds: number,
+  genre?: string | null,
 ): Promise<{ code: string; hostId: string }> {
   const supabase = getServiceClient();
   const rounds = Math.min(
@@ -111,6 +123,7 @@ export async function createRoom(
       host_id: hostId,
       status: "waiting",
       max_rounds: rounds,
+      genre: genre || null,
     });
     if (!error) return { code, hostId };
     if (error.code !== "23505") {
@@ -157,7 +170,7 @@ export async function startRound(code: string, hostId: string): Promise<void> {
   const supabase = getServiceClient();
   const { data: room } = await supabase
     .from("rooms")
-    .select("id, host_id, status, current_round, max_rounds")
+    .select("id, host_id, status, current_round, max_rounds, genre")
     .eq("code", code)
     .single();
   if (!room) throw new Error("Room not found.");
@@ -170,6 +183,7 @@ export async function startRound(code: string, hostId: string): Promise<void> {
 
   const { data: correctId } = await supabase.rpc("random_track", {
     exclude_id: null,
+    p_genre: room.genre ?? null,
   });
   if (!correctId) throw new Error("The song library is empty.");
 

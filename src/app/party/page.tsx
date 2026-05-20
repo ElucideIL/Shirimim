@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { createRoom } from "@/actions/party";
+import { useEffect, useState } from "react";
+import { createRoom, getPartyGenres } from "@/actions/party";
 import {
   PARTY_DEFAULT_ROUNDS,
   PARTY_MAX_ROUNDS,
@@ -13,15 +13,23 @@ import {
 export default function PartyEntryPage() {
   const router = useRouter();
   const [rounds, setRounds] = useState(PARTY_DEFAULT_ROUNDS);
+  const [genre, setGenre] = useState("");
+  const [genres, setGenres] = useState<{ genre: string; n: number }[]>([]);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getPartyGenres()
+      .then(setGenres)
+      .catch(() => setGenres([]));
+  }, []);
 
   async function handleCreate() {
     setBusy(true);
     setError(null);
     try {
-      const room = await createRoom(rounds);
+      const room = await createRoom(rounds, genre || null);
       sessionStorage.setItem(`party:${room.code}:host`, room.hostId);
       router.push(`/party/${room.code}`);
     } catch (err) {
@@ -69,6 +77,23 @@ export default function PartyEntryPage() {
               className="w-20 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-center text-white outline-none focus:border-white/30"
             />
           </label>
+          {genres.length > 0 && (
+            <label className="mt-3 flex items-center justify-between text-sm text-white/60">
+              Genre
+              <select
+                value={genre}
+                onChange={(e) => setGenre(e.target.value)}
+                className="w-40 rounded-lg border border-white/10 bg-neutral-800 px-3 py-1.5 text-white outline-none focus:border-white/30"
+              >
+                <option value="">All genres</option>
+                {genres.map((g) => (
+                  <option key={g.genre} value={g.genre}>
+                    {g.genre}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             onClick={handleCreate}

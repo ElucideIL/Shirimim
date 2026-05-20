@@ -34,6 +34,7 @@ export async function startEndlessRound(
     exclude_id: excludeId,
     p_genre: filter?.kind === "genre" ? filter.genre : null,
     p_script: filter?.kind === "hebrew" ? "hebrew" : null,
+    p_artist: filter?.kind === "artist" ? filter.artist : null,
   });
   if (error) throw new Error(`random_track failed: ${error.message}`);
   if (!trackId) return null; // empty library / empty sub-mode
@@ -110,11 +111,15 @@ export async function getEndlessModes(): Promise<EndlessModes> {
     .select("id", { count: "exact", head: true })
     .eq("script", "hebrew");
 
-  const { data } = await supabase.rpc("endless_genres");
-  const genres = ((data ?? []) as { genre: string; n: number }[]).map((g) => ({
-    genre: g.genre,
-    n: Number(g.n),
-  }));
+  const { data: genreData } = await supabase.rpc("endless_genres");
+  const genres = ((genreData ?? []) as { genre: string; n: number }[]).map(
+    (g) => ({ genre: g.genre, n: Number(g.n) }),
+  );
 
-  return { hebrew: count ?? 0, genres };
+  const { data: artistData } = await supabase.rpc("endless_artists");
+  const artists = ((artistData ?? []) as { artist: string; n: number }[]).map(
+    (a) => ({ artist: a.artist, n: Number(a.n) }),
+  );
+
+  return { hebrew: count ?? 0, genres, artists };
 }

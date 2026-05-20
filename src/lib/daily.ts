@@ -22,6 +22,18 @@ export function getDayNumber(now: Date = new Date()): number {
   return Math.floor((today - epoch) / 86_400_000);
 }
 
+/** Human calendar label (e.g. "May 18, 2026") for a given day number. */
+export function dateLabelForDay(dayNumber: number): string {
+  const epoch = Date.parse(`${EPOCH}T00:00:00Z`);
+  const d = new Date(epoch + dayNumber * 86_400_000);
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(d);
+}
+
 function mapRow(row: Record<string, unknown>): Track {
   return {
     id: row.id as string,

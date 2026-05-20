@@ -91,6 +91,12 @@ def detect_script(text: str) -> str:
     return "other"
 
 
+def _year_from(release_date) -> int | None:
+    """Extract a 4-digit year from an iTunes releaseDate (e.g. '2019-06-21T07:00:00Z')."""
+    m = re.match(r"\d{4}", str(release_date or ""))
+    return int(m.group(0)) if m else None
+
+
 def artist_matches(query_artist: str, result_artist: str) -> bool:
     """True if either artist string loosely contains the other."""
     a, b = norm(query_artist), norm(result_artist)
@@ -235,6 +241,7 @@ def itunes_lookup(artist: str, title: str):
         "youtube_id": None,
         "artwork_url": artwork or None,
         "genre": clean(r.get("primaryGenreName")) or None,
+        "release_year": _year_from(r.get("releaseDate")),
         "script": detect_script(f"{final_artist} {final_title}"),
     }
 
@@ -288,7 +295,8 @@ def youtube_lookup(artist: str, title: str):
             "preview_url": None,
             "youtube_id": vid,
             "artwork_url": meta.get("thumbnail"),
-            "genre": None,  # iTunes-only; tolerated by the distractor cascade
+            "genre": None,         # iTunes-only — backfill_metadata.py fills it later
+            "release_year": None,  # iTunes-only — backfill_metadata.py fills it later
             "script": detect_script(f"{artist} {title}"),
         }
     return None

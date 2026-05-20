@@ -14,10 +14,15 @@ import { EndlessModePicker } from "./EndlessModePicker";
 import { GameBoard } from "./GameBoard";
 
 function modeKey(f: EndlessFilter): string {
-  return f.kind === "genre" ? `genre:${f.genre}` : f.kind;
+  if (f.kind === "genre") return `genre:${f.genre}`;
+  if (f.kind === "artist") return `artist:${f.artist}`;
+  return f.kind;
 }
 function modeLabel(f: EndlessFilter): string {
-  return f.kind === "all" ? "All songs" : f.kind === "hebrew" ? "Hebrew" : f.genre;
+  if (f.kind === "all") return "All songs";
+  if (f.kind === "hebrew") return "Hebrew";
+  if (f.kind === "genre") return f.genre;
+  return f.artist;
 }
 function bestKey(f: EndlessFilter): string {
   return `shirimim:endless:best:${modeKey(f)}`;
