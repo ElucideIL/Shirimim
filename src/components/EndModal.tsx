@@ -13,6 +13,12 @@ interface Props {
   /** Mode-specific bottom slot: a midnight countdown, or a "Next song" button. */
   footer: ReactNode;
   onClose: () => void;
+  /** Replay the longer post-answer clip. */
+  playFull: () => void;
+  /** Stop playback. */
+  stopAudio: () => void;
+  /** True while the clip is sounding. */
+  isPlaying: boolean;
 }
 
 function squaresFor(guesses: GuessRow[]): string[] {
@@ -49,6 +55,9 @@ export function EndModal({
   shareText,
   footer,
   onClose,
+  playFull,
+  stopAudio,
+  isPlaying,
 }: Props) {
   const [copied, setCopied] = useState(false);
 
@@ -109,8 +118,16 @@ export function EndModal({
 
         <button
           type="button"
+          onClick={isPlaying ? stopAudio : playFull}
+          className="mt-4 w-full rounded-xl border border-white/15 px-4 py-2.5 text-sm font-medium text-white/85 hover:bg-white/10"
+        >
+          {isPlaying ? "■  Stop" : "▶  Hear more of the song"}
+        </button>
+
+        <button
+          type="button"
           onClick={share}
-          className="mt-5 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-black transition-colors hover:bg-emerald-400"
+          className="mt-3 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-black transition-colors hover:bg-emerald-400"
         >
           {copied ? "Copied to clipboard!" : "Share result"}
         </button>

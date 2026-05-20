@@ -7,6 +7,9 @@ export const MAX_ATTEMPTS = INTERVALS.length;
 /** Full length of the progress bar in ms. */
 export const TOTAL_MS = INTERVALS[INTERVALS.length - 1];
 
+/** Post-answer "hear more" replay length, in ms (iTunes previews cap at ~30s). */
+export const FULL_CLIP_MS = 30000;
+
 /** Per-segment widths, proportional to each interval's increment [1,1,2,3,4,5]. */
 export const SEGMENT_MS: number[] = INTERVALS.map(
   (ms, i) => ms - (i === 0 ? 0 : INTERVALS[i - 1]),

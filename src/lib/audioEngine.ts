@@ -137,8 +137,12 @@ export function useAudioEngine(track: ClientTrack): AudioEngine {
     if (!activeRef.current) return;
     const t = getPositionMs();
     const cap = capRef.current;
+    // An iTunes preview can be shorter than the cap (extended replay) — treat
+    // the clip running out the same as hitting the cap.
+    const ended =
+      track.source === "itunes" && (audioRef.current?.ended ?? false);
 
-    if (t >= cap) {
+    if (t >= cap || ended) {
       // Segment finished: rewind audio, leave the playhead parked at the cap.
       activeRef.current = false;
       cancelRaf();
@@ -150,7 +154,7 @@ export function useAudioEngine(track: ClientTrack): AudioEngine {
     if (t > 0) setIsPlaying(true);
     setPositionMs(t);
     rafRef.current = requestAnimationFrame(tick);
-  }, [getPositionMs, cancelRaf, rewindBackend]);
+  }, [getPositionMs, cancelRaf, rewindBackend, track.source]);
 
   const playSegment = useCallback(
     (capMs: number) => {

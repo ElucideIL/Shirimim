@@ -21,12 +21,15 @@ export function DuelGame({
       navLabel="Daily"
       persistKey={`shirimim:duel:${duelId}`}
       onTurn={(input: TurnInput) => resolveDuelTurn(input, duelId)}
-      renderEnd={({ won, answer, guesses, close }) => (
+      renderEnd={({ won, answer, guesses, close, playFull, stopAudio, isPlaying }) => (
         <DuelEndModal
           duelId={duelId}
           won={won}
           answer={answer}
           guesses={guesses}
+          playFull={playFull}
+          stopAudio={stopAudio}
+          isPlaying={isPlaying}
           onClose={close}
         />
       )}

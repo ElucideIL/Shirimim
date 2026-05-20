@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useAudioEngine, YT_HOST_ID } from "@/lib/audioEngine";
-import { INTERVALS, MAX_ATTEMPTS, TOTAL_MS } from "@/lib/constants";
+import { FULL_CLIP_MS, INTERVALS, MAX_ATTEMPTS, TOTAL_MS } from "@/lib/constants";
 import type {
   Answer,
   ClientTrack,
@@ -31,6 +31,12 @@ export interface EndContext {
   guesses: GuessRow[];
   /** Dismiss the end screen (the board stays visible behind it). */
   close: () => void;
+  /** Replay the longer post-answer clip ("hear more of the song"). */
+  playFull: () => void;
+  /** Stop any playback. */
+  stopAudio: () => void;
+  /** True while the clip is sounding. */
+  isPlaying: boolean;
 }
 
 interface SavedState {
@@ -114,20 +120,23 @@ export function GameBoard({
     }
   }, [hydrated, persistKey, currentAttempt, guesses, status, answer]);
 
-  // Report the round result exactly once when it ends.
+  // Report the round result once when it ends, and auto-play the longer clip.
   const roundEndReported = useRef(false);
   useEffect(() => {
     if (status !== "playing" && !roundEndReported.current) {
       roundEndReported.current = true;
       onRoundEnd?.(status === "won");
+      playSegment(FULL_CLIP_MS);
     }
-  }, [status, onRoundEnd]);
+  }, [status, onRoundEnd, playSegment]);
 
   const handlePlayToggle = useCallback(() => {
     if (status !== "playing") return;
     if (isPlaying) stop();
     else playSegment(INTERVALS[currentAttempt]);
   }, [status, isPlaying, stop, playSegment, currentAttempt]);
+
+  const playFull = useCallback(() => playSegment(FULL_CLIP_MS), [playSegment]);
 
   const handleGuess = useCallback(
     async (result: SearchResult) => {
@@ -280,6 +289,9 @@ export function GameBoard({
           answer,
           guesses,
           close: () => setModalDismissed(true),
+          playFull,
+          stopAudio: stop,
+          isPlaying,
         })}
     </main>
   );

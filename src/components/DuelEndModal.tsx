@@ -18,6 +18,9 @@ interface Props {
   answer: Answer;
   guesses: GuessRow[];
   onClose: () => void;
+  playFull: () => void;
+  stopAudio: () => void;
+  isPlaying: boolean;
 }
 
 function DuelRow({ row, you = false }: { row: ResultRow; you?: boolean }) {
@@ -49,7 +52,16 @@ function DuelRow({ row, you = false }: { row: ResultRow; you?: boolean }) {
 }
 
 /** Duel end screen: your result, the share link, and the friend's result. */
-export function DuelEndModal({ duelId, won, answer, guesses, onClose }: Props) {
+export function DuelEndModal({
+  duelId,
+  won,
+  answer,
+  guesses,
+  onClose,
+  playFull,
+  stopAudio,
+  isPlaying,
+}: Props) {
   const [results, setResults] = useState<ResultRow[] | null>(null);
   const [playerId, setPlayerId] = useState("");
   const [name, setName] = useState("");
@@ -142,6 +154,14 @@ export function DuelEndModal({ duelId, won, answer, guesses, onClose }: Props) {
           Your result:{" "}
           {won ? `${myGuesses}/${MAX_ATTEMPTS}` : `X/${MAX_ATTEMPTS}`}
         </p>
+
+        <button
+          type="button"
+          onClick={isPlaying ? stopAudio : playFull}
+          className="mt-3 w-full rounded-xl border border-white/15 px-4 py-2.5 text-sm font-medium text-white/85 hover:bg-white/10"
+        >
+          {isPlaying ? "■  Stop" : "▶  Hear more of the song"}
+        </button>
 
         {!name && (
           <div className="mt-4 flex gap-2">

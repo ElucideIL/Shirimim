@@ -155,11 +155,14 @@ export function EndlessGame() {
         resolveEndlessTurn({ ...input, token: round.token })
       }
       onRoundEnd={handleRoundEnd}
-      renderEnd={({ won, answer, guesses, close }) => (
+      renderEnd={({ won, answer, guesses, close, playFull, stopAudio, isPlaying }) => (
         <EndModal
           won={won}
           answer={answer}
           guesses={guesses}
+          playFull={playFull}
+          stopAudio={stopAudio}
+          isPlaying={isPlaying}
           shareText={buildShareText(null, guesses, won)}
           onClose={close}
           footer={
