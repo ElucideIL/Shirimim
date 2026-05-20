@@ -11,6 +11,10 @@ export interface Track {
   artworkUrl: string | null;
   /** Playback starts this many ms in — skips a quiet intro. */
   startOffsetMs: number;
+  /** Canonical genre — null when unknown (e.g. an un-backfilled YouTube track). */
+  genre: string | null;
+  /** 4-digit release year — null when unknown. */
+  releaseYear: number | null;
 }
 
 /** Only the fields safe to send to the browser before the game ends. */
@@ -56,6 +60,14 @@ export interface TurnInput {
   attemptIndex: number;
 }
 
+/** Progressively unlocked clues about the answer (genre, then release year). */
+export interface Hint {
+  /** The answer's genre — null until enough attempts are used, or if unknown. */
+  genre: string | null;
+  /** The answer's release year — null until enough attempts are used. */
+  year: number | null;
+}
+
 /** Result of submitting a guess or a skip to the server. */
 export interface TurnResult {
   correct: boolean;
@@ -63,6 +75,8 @@ export interface TurnResult {
   artistMatch: boolean;
   gameOver: boolean;
   answer: Answer | null;
+  /** Clues unlocked so far — see HINT_GENRE_AFTER / HINT_YEAR_AFTER. */
+  hint: Hint;
 }
 
 /** Endless-mode sub-mode: whole library, Hebrew, a genre, an artist, etc. */
@@ -87,6 +101,14 @@ export interface EndlessModes {
 export interface ArchiveEntry {
   day: number;
   date: string;
+}
+
+/** One Lyrics-mode round: a window of lyric lines + a sealed answer token. */
+export interface LyricsRound {
+  /** Lyric lines, revealed one more per wrong guess. */
+  lines: string[];
+  /** Opaque encrypted token binding this round to its answer. */
+  token: string;
 }
 
 /** One player's result row — used by both the friend leaderboard and duels. */

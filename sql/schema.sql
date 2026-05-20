@@ -251,6 +251,11 @@ create table if not exists players (
 );
 create index if not exists players_room_idx on players (room_id);
 
+-- Power-ups: one 50:50 and one double-points per player per game.
+alter table players add column if not exists used_fifty   boolean not null default false;
+alter table players add column if not exists used_double  boolean not null default false;
+alter table players add column if not exists double_round int     not null default 0;
+
 -- ----------------------------------------------------------------------------
 -- party_distractors: up to p_count wrong-answer tracks for a Party round.
 -- Cascade, best tier first: same artist -> same genre+script -> same script -> any.
@@ -351,3 +356,28 @@ create index if not exists duel_results_duel_idx on duel_results (duel_id);
 
 alter table duels        enable row level security;
 alter table duel_results enable row level security;
+
+-- ============================================================================
+-- LYRICS MODE — guess the song from its lyrics
+-- ============================================================================
+
+-- Cached song lyrics, populated by ingest/fetch_lyrics.py. NULL until fetched.
+alter table tracks add column if not exists lyrics text;
+
+-- Partial index — Lyrics mode only ever queries the rows that have lyrics.
+create index if not exists tracks_has_lyrics_idx on tracks (id) where lyrics is not null;
+
+-- ----------------------------------------------------------------------------
+-- random_lyrics_track: a random track that has cached lyrics (Lyrics mode).
+-- ----------------------------------------------------------------------------
+create or replace function random_lyrics_track(exclude_id uuid default null)
+returns uuid
+language sql
+as $$
+  select id
+  from tracks
+  where lyrics is not null
+    and (exclude_id is null or id <> exclude_id)
+  order by random()
+  limit 1;
+$$;

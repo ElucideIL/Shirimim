@@ -15,14 +15,18 @@ import type {
   ClientTrack,
   GameStatus,
   GuessRow,
+  Hint,
   SearchResult,
   TurnInput,
   TurnResult,
 } from "@/lib/types";
 import { GuessGrid } from "./GuessGrid";
+import { HintBar } from "./HintBar";
 import { PlayButton } from "./PlayButton";
 import { ProgressBar } from "./ProgressBar";
 import { SearchFooter } from "./SearchFooter";
+
+const NO_HINT: Hint = { genre: null, year: null };
 
 /** Context handed to a mode's end-screen renderer. */
 export interface EndContext {
@@ -44,6 +48,7 @@ interface SavedState {
   guesses: GuessRow[];
   status: GameStatus;
   answer: Answer | null;
+  hint: Hint;
 }
 
 interface Props {
@@ -84,6 +89,7 @@ export function GameBoard({
   const [guesses, setGuesses] = useState<GuessRow[]>([]);
   const [status, setStatus] = useState<GameStatus>("playing");
   const [answer, setAnswer] = useState<Answer | null>(null);
+  const [hint, setHint] = useState<Hint>(NO_HINT);
   const [pending, setPending] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [modalDismissed, setModalDismissed] = useState(false);
@@ -102,6 +108,7 @@ export function GameBoard({
         setGuesses(saved.guesses ?? []);
         setStatus(saved.status ?? "playing");
         setAnswer(saved.answer ?? null);
+        setHint(saved.hint ?? NO_HINT);
       }
     } catch {
       /* corrupt entry — start fresh */
@@ -112,13 +119,13 @@ export function GameBoard({
   // Persist progress so a refresh resumes the round.
   useEffect(() => {
     if (!hydrated || !persistKey) return;
-    const saved: SavedState = { currentAttempt, guesses, status, answer };
+    const saved: SavedState = { currentAttempt, guesses, status, answer, hint };
     try {
       localStorage.setItem(persistKey, JSON.stringify(saved));
     } catch {
       /* storage full / unavailable — non-fatal */
     }
-  }, [hydrated, persistKey, currentAttempt, guesses, status, answer]);
+  }, [hydrated, persistKey, currentAttempt, guesses, status, answer, hint]);
 
   // Report the round result once when it ends, and auto-play the longer clip.
   const roundEndReported = useRef(false);
@@ -149,6 +156,7 @@ export function GameBoard({
           guessTrackId: result.id,
           attemptIndex: currentAttempt,
         });
+        setHint(res.hint);
         const label = `${result.artist} — ${result.title}`;
         if (res.correct) {
           setGuesses((g) => [...g, { outcome: "correct", label }]);
@@ -178,6 +186,7 @@ export function GameBoard({
     stop();
     try {
       const res = await onTurn({ action: "skip", attemptIndex: currentAttempt });
+      setHint(res.hint);
       setGuesses((g) => [...g, { outcome: "skipped", label: "Skipped" }]);
       setCurrentAttempt((a) => a + 1);
       if (res.gameOver) {
@@ -223,6 +232,12 @@ export function GameBoard({
             {navLabel}
           </Link>
           <Link
+            href="/lyrics"
+            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+          >
+            Lyrics
+          </Link>
+          <Link
             href="/archive"
             className="rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
           >
@@ -250,6 +265,8 @@ export function GameBoard({
       </header>
 
       <ProgressBar positionMs={positionMs} unlockedMs={unlockedMs} />
+
+      {!over && <HintBar hint={hint} attemptsUsed={currentAttempt} />}
 
       <div className="flex justify-center py-8">
         <PlayButton

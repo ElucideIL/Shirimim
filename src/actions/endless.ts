@@ -1,6 +1,7 @@
 "use server";
 
 import { MAX_ATTEMPTS } from "@/lib/constants";
+import { hintFor } from "@/lib/daily";
 import { sameArtist } from "@/lib/match";
 import { openTrackId, sealTrackId } from "@/lib/round";
 import { getServiceClient } from "@/lib/supabase";
@@ -78,38 +79,42 @@ export async function resolveEndlessTurn(
   const isWrongGuess = input.action === "guess" && !correct;
 
   const supabase = getServiceClient();
-  let answerArtist = "";
-  let answer: TurnResult["answer"] = null;
+  const { data: answerRow } = await supabase
+    .from("tracks")
+    .select("artist, title, artwork_url, genre, release_year")
+    .eq("id", answerId)
+    .single();
 
-  if (gameOver || isWrongGuess) {
-    const { data } = await supabase
-      .from("tracks")
-      .select("artist, title, artwork_url")
-      .eq("id", answerId)
-      .single();
-    if (data) {
-      answerArtist = data.artist;
-      if (gameOver) {
-        answer = {
-          artist: data.artist,
-          title: data.title,
-          artworkUrl: data.artwork_url,
-        };
-      }
-    }
-  }
+  const answer: TurnResult["answer"] =
+    gameOver && answerRow
+      ? {
+          artist: answerRow.artist,
+          title: answerRow.title,
+          artworkUrl: answerRow.artwork_url,
+        }
+      : null;
 
   let artistMatch = false;
-  if (isWrongGuess && input.guessTrackId && answerArtist) {
+  if (isWrongGuess && input.guessTrackId && answerRow) {
     const { data } = await supabase
       .from("tracks")
       .select("artist")
       .eq("id", input.guessTrackId)
       .single();
-    if (data) artistMatch = sameArtist(data.artist, answerArtist);
+    if (data) artistMatch = sameArtist(data.artist, answerRow.artist);
   }
 
-  return { correct, artistMatch, gameOver, answer };
+  return {
+    correct,
+    artistMatch,
+    gameOver,
+    answer,
+    hint: hintFor(
+      answerRow?.genre ?? null,
+      answerRow?.release_year ?? null,
+      input.attemptIndex + 1,
+    ),
+  };
 }
 
 /** List the Endless sub-modes available given the current library. */

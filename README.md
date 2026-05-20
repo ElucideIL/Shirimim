@@ -16,13 +16,18 @@ Built with Next.js 16 + TypeScript + Tailwind + Supabase, free to host on Vercel
 - **Party** — Kahoot-style real-time multiplayer. The host opens a room, friends
   join with a 6-character code, and everyone races to pick the song from four
   options, scored by speed. Optional genre lock, live leaderboard, final podium.
+  Each player gets two one-shot power-ups: **50:50** (knocks out two wrong
+  options) and **2× points**.
 - **Duel** — async 1-v-1: start a duel on a random song, share the link, and the
   end screen compares both players' results.
+- **Lyrics** — guess the song from its lyrics instead of audio. One line shows up
+  front and each wrong guess reveals another, with a streak counter.
 
 Plus a **Stats** page (Wordle-style win %, streaks, guess distribution) and a
 friend **Leaderboard** for the daily puzzle. Guesses are colour-coded — green
 (correct), yellow (right artist, wrong song), red (wrong) — and once a round
-ends you can hear a longer clip of the song.
+ends you can hear a longer clip of the song. In Daily, Endless and Duel a
+**genre hint** unlocks after two guesses and a **release-year hint** after three.
 
 ## Audio
 
@@ -70,6 +75,17 @@ python backfill_metadata.py --normalize-only   # re-apply genre rules only
 
 `genre_rules.py` holds the genre-folding map and the Mizrahi artist list — edit
 it and re-run the backfill to reshape how genres are bucketed.
+
+Two more optional passes, both resumable and safe to leave running in the
+background:
+
+```bash
+python detect_offsets.py   # auto-skip quiet song intros (ffmpeg silence detect)
+python fetch_lyrics.py     # cache lyrics (lyrics.ovh) — powers Lyrics mode
+```
+
+Lyrics mode only draws from tracks that `fetch_lyrics.py` resolved, so coverage
+grows as that pass runs; non-English titles match poorly and are simply skipped.
 
 ## 3. Run the app
 

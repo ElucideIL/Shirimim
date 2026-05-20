@@ -10,6 +10,8 @@ interface Props {
   /** Set once the round is revealed; null while answering. */
   correctId: string | null;
   disabled: boolean;
+  /** Option ids knocked out by this player's 50:50 power-up. */
+  removedIds?: string[];
   onPick: (id: string) => void;
 }
 
@@ -18,6 +20,7 @@ export function AnswerButtons({
   pickedId,
   correctId,
   disabled,
+  removedIds,
   onPick,
 }: Props) {
   const revealing = correctId !== null;
@@ -30,20 +33,24 @@ export function AnswerButtons({
           revealing && opt.id === pickedId && opt.id !== correctId;
         const dim = revealing && !isCorrect && !isWrongPick;
         const selected = !revealing && pickedId === opt.id;
+        const removed = !revealing && (removedIds ?? []).includes(opt.id);
 
         return (
           <button
             key={opt.id}
             type="button"
-            disabled={disabled}
+            disabled={disabled || removed}
             onClick={() => onPick(opt.id)}
             className={[
               COLORS[i % 4],
               "relative flex min-h-[88px] flex-col items-center justify-center gap-1 rounded-2xl px-4 py-4 text-center transition",
               dim ? "opacity-30" : "",
+              removed ? "opacity-20 line-through" : "",
               isCorrect || selected ? "ring-4 ring-white" : "",
               isWrongPick ? "ring-4 ring-red-300" : "",
-              disabled ? "cursor-default" : "hover:brightness-110 active:scale-[0.98]",
+              disabled || removed
+                ? "cursor-default"
+                : "hover:brightness-110 active:scale-[0.98]",
             ].join(" ")}
           >
             <span className="text-base font-bold text-white">{opt.title}</span>

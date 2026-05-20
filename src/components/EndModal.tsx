@@ -13,12 +13,12 @@ interface Props {
   /** Mode-specific bottom slot: a midnight countdown, or a "Next song" button. */
   footer: ReactNode;
   onClose: () => void;
-  /** Replay the longer post-answer clip. */
-  playFull: () => void;
+  /** Replay the longer post-answer clip. Omit in modes with no audio. */
+  playFull?: () => void;
   /** Stop playback. */
-  stopAudio: () => void;
+  stopAudio?: () => void;
   /** True while the clip is sounding. */
-  isPlaying: boolean;
+  isPlaying?: boolean;
 }
 
 function squaresFor(guesses: GuessRow[]): string[] {
@@ -116,13 +116,15 @@ export function EndModal({
             : `${MAX_ATTEMPTS}/${MAX_ATTEMPTS} used`}
         </p>
 
-        <button
-          type="button"
-          onClick={isPlaying ? stopAudio : playFull}
-          className="mt-4 w-full rounded-xl border border-white/15 px-4 py-2.5 text-sm font-medium text-white/85 hover:bg-white/10"
-        >
-          {isPlaying ? "■  Stop" : "▶  Hear more of the song"}
-        </button>
+        {playFull && (
+          <button
+            type="button"
+            onClick={isPlaying ? stopAudio : playFull}
+            className="mt-4 w-full rounded-xl border border-white/15 px-4 py-2.5 text-sm font-medium text-white/85 hover:bg-white/10"
+          >
+            {isPlaying ? "■  Stop" : "▶  Hear more of the song"}
+          </button>
+        )}
 
         <button
           type="button"

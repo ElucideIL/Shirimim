@@ -1,7 +1,24 @@
 import "server-only";
-import { EPOCH, GAME_TZ } from "./constants";
+import {
+  EPOCH,
+  GAME_TZ,
+  HINT_GENRE_AFTER,
+  HINT_YEAR_AFTER,
+} from "./constants";
 import { getServiceClient } from "./supabase";
-import type { Track } from "./types";
+import type { Hint, Track } from "./types";
+
+/** Clues unlocked once `attemptsUsed` reaches each hint's threshold. */
+export function hintFor(
+  genre: string | null,
+  year: number | null,
+  attemptsUsed: number,
+): Hint {
+  return {
+    genre: attemptsUsed >= HINT_GENRE_AFTER ? genre : null,
+    year: attemptsUsed >= HINT_YEAR_AFTER ? year : null,
+  };
+}
 
 /** 'YYYY-MM-DD' wall-clock date for `d` in the given timezone. */
 function ymdInTz(d: Date, tz: string): string {
@@ -44,6 +61,8 @@ function mapRow(row: Record<string, unknown>): Track {
     youtubeId: (row.youtube_id as string | null) ?? null,
     artworkUrl: (row.artwork_url as string | null) ?? null,
     startOffsetMs: (row.start_offset_ms as number | null) ?? 0,
+    genre: (row.genre as string | null) ?? null,
+    releaseYear: (row.release_year as number | null) ?? null,
   };
 }
 
@@ -60,7 +79,7 @@ export async function getTrackForDay(dayNumber: number): Promise<Track | null> {
   const { data, error: fetchError } = await supabase
     .from("tracks")
     .select(
-      "id, artist, title, source, preview_url, youtube_id, artwork_url, start_offset_ms",
+      "id, artist, title, source, preview_url, youtube_id, artwork_url, start_offset_ms, genre, release_year",
     )
     .eq("id", trackId)
     .single();

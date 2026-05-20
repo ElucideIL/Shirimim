@@ -15,6 +15,16 @@ export const SEGMENT_MS: number[] = INTERVALS.map(
   (ms, i) => ms - (i === 0 ? 0 : INTERVALS[i - 1]),
 );
 
+// --- Hints ---
+/** Attempts that must be used before the genre hint unlocks. */
+export const HINT_GENRE_AFTER = 2;
+/** Attempts that must be used before the release-year hint unlocks. */
+export const HINT_YEAR_AFTER = 3;
+
+// --- Lyrics mode ---
+/** Lyric lines in one round — one is shown up front, one more per wrong guess. */
+export const LYRICS_LINES = MAX_ATTEMPTS;
+
 /** Day 0 of the game (calendar date in GAME_TZ). */
 export const EPOCH = "2026-05-20";
 

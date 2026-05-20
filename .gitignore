@@ -49,6 +49,7 @@ ingest/__pycache__/
 ingest/progress_state.json
 ingest/genre_backfill_state.json
 ingest/offset_detect_state.json
+ingest/lyrics_fetch_state.json
 ingest/unresolved.csv
 ingest/seed.csv
 ingest/song_library/

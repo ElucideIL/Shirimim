@@ -1,7 +1,7 @@
 "use server";
 
 import { MAX_ATTEMPTS } from "@/lib/constants";
-import { getDayNumber, getTrackForDay } from "@/lib/daily";
+import { getDayNumber, getTrackForDay, hintFor } from "@/lib/daily";
 import { sameArtist } from "@/lib/match";
 import { getServiceClient } from "@/lib/supabase";
 import type { TurnInput, TurnResult } from "@/lib/types";
@@ -54,5 +54,6 @@ export async function resolveTurn(
           artworkUrl: track.artworkUrl,
         }
       : null,
+    hint: hintFor(track.genre, track.releaseYear, attemptIndex + 1),
   };
 }

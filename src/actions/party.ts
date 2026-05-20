@@ -253,7 +253,7 @@ export async function submitPartyAnswer(
 
   const { data: player } = await supabase
     .from("players")
-    .select("id, room_id, name, score, last_answered_round")
+    .select("id, room_id, name, score, last_answered_round, double_round")
     .eq("id", playerId)
     .single();
   if (!player || player.room_id !== room.id) return { accepted: false };
@@ -264,9 +264,11 @@ export async function submitPartyAnswer(
   const correct = pickedOptionId === room.current_answer_id;
   const elapsed = Date.now() - new Date(room.round_started_at).getTime();
   const remaining = Math.min(PARTY_ROUND_MS, Math.max(0, PARTY_ROUND_MS - elapsed));
-  const gained = correct
+  const doubled = player.double_round === room.current_round;
+  let gained = correct
     ? Math.round(PARTY_MAX_POINTS * (remaining / PARTY_ROUND_MS))
     : 0;
+  if (doubled) gained *= 2;
 
   await supabase
     .from("players")
@@ -287,6 +289,81 @@ export async function submitPartyAnswer(
     answeredCount: count ?? 0,
   });
   return { accepted: true };
+}
+
+/**
+ * Power-up: spend a player's one-time 50:50. The server (which alone knows the
+ * answer) returns two wrong option ids for that player's client to hide.
+ */
+export async function useFiftyFifty(
+  code: string,
+  playerId: string,
+): Promise<{ removedOptionIds: string[] }> {
+  const empty = { removedOptionIds: [] };
+  const supabase = getServiceClient();
+
+  const { data: room } = await supabase
+    .from("rooms")
+    .select("id, status, current_round, current_answer_id, round_options")
+    .eq("code", code)
+    .single();
+  if (!room || room.status !== "playing") return empty;
+
+  const { data: player } = await supabase
+    .from("players")
+    .select("id, room_id, used_fifty, last_answered_round")
+    .eq("id", playerId)
+    .single();
+  if (!player || player.room_id !== room.id) return empty;
+  if (player.used_fifty || player.last_answered_round >= room.current_round) {
+    return empty;
+  }
+
+  const options = (room.round_options ?? []) as PartyOption[];
+  const wrong = options.filter((o) => o.id !== room.current_answer_id);
+  const removedOptionIds = shuffle(wrong)
+    .slice(0, 2)
+    .map((o) => o.id);
+
+  await supabase
+    .from("players")
+    .update({ used_fifty: true })
+    .eq("id", playerId);
+  return { removedOptionIds };
+}
+
+/**
+ * Power-up: arm a player's one-time double-points for the current round. The
+ * doubling is applied server-side in submitPartyAnswer.
+ */
+export async function useDoublePoints(
+  code: string,
+  playerId: string,
+): Promise<{ armed: boolean }> {
+  const supabase = getServiceClient();
+
+  const { data: room } = await supabase
+    .from("rooms")
+    .select("id, status, current_round")
+    .eq("code", code)
+    .single();
+  if (!room || room.status !== "playing") return { armed: false };
+
+  const { data: player } = await supabase
+    .from("players")
+    .select("id, room_id, used_double, last_answered_round")
+    .eq("id", playerId)
+    .single();
+  if (!player || player.room_id !== room.id) return { armed: false };
+  if (player.used_double || player.last_answered_round >= room.current_round) {
+    return { armed: false };
+  }
+
+  await supabase
+    .from("players")
+    .update({ used_double: true, double_round: room.current_round })
+    .eq("id", playerId);
+  return { armed: true };
 }
 
 /** Host ends the round: reveals the answer and the leaderboard. */

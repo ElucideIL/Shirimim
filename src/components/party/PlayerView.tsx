@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { joinRoom, submitPartyAnswer } from "@/actions/party";
+import {
+  joinRoom,
+  submitPartyAnswer,
+  useDoublePoints,
+  useFiftyFifty,
+} from "@/actions/party";
 import { PARTY_ROUND_MS } from "@/lib/constants";
 import { usePartyRoom } from "@/lib/usePartyRoom";
 import { AnswerButtons } from "./AnswerButtons";
@@ -21,6 +26,11 @@ export function PlayerView({ code }: { code: string }) {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [muted, setMuted] = useState(true);
+  // Power-ups: one 50:50 and one double-points per game.
+  const [usedFifty, setUsedFifty] = useState(false);
+  const [usedDouble, setUsedDouble] = useState(false);
+  const [doubleArmed, setDoubleArmed] = useState(false);
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
 
   const storeKey = `party:${code}:player`;
 
@@ -29,9 +39,11 @@ export function PlayerView({ code }: { code: string }) {
     setHydrated(true);
   }, [storeKey]);
 
-  // Clear the previous pick whenever a new round starts.
+  // Reset the per-round state whenever a new round starts.
   useEffect(() => {
     setPicked(null);
+    setDoubleArmed(false);
+    setRemovedIds([]);
   }, [round?.round]);
 
   const handleJoin = useCallback(async () => {
@@ -60,6 +72,28 @@ export function PlayerView({ code }: { code: string }) {
     },
     [code, playerId, picked],
   );
+
+  const handleFifty = useCallback(async () => {
+    if (!playerId || usedFifty || picked) return;
+    setUsedFifty(true);
+    try {
+      const res = await useFiftyFifty(code, playerId);
+      setRemovedIds(res.removedOptionIds);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [code, playerId, usedFifty, picked]);
+
+  const handleDouble = useCallback(async () => {
+    if (!playerId || usedDouble || picked) return;
+    setUsedDouble(true);
+    try {
+      const res = await useDoublePoints(code, playerId);
+      setDoubleArmed(res.armed);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [code, playerId, usedDouble, picked]);
 
   const shell = "mx-auto flex min-h-dvh w-full max-w-md flex-col px-5";
 
@@ -143,11 +177,38 @@ export function PlayerView({ code }: { code: string }) {
               {muted ? "🔇 Tap for sound" : "🔊 Sound on"}
             </button>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleFifty}
+              disabled={usedFifty || picked !== null}
+              className="rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-white/80 hover:bg-white/10 disabled:opacity-30"
+            >
+              {usedFifty ? "50:50 used" : "✂️ 50:50"}
+            </button>
+            <button
+              type="button"
+              onClick={handleDouble}
+              disabled={usedDouble || picked !== null}
+              className={`rounded-lg border px-3 py-2 text-xs font-medium hover:bg-white/10 disabled:opacity-30 ${
+                doubleArmed
+                  ? "border-amber-400/50 bg-amber-400/15 text-amber-200"
+                  : "border-white/15 text-white/80"
+              }`}
+            >
+              {doubleArmed
+                ? "2× armed!"
+                : usedDouble
+                  ? "2× used"
+                  : "✨ 2× points"}
+            </button>
+          </div>
           <AnswerButtons
             options={round.options}
             pickedId={picked}
             correctId={null}
             disabled={picked !== null}
+            removedIds={removedIds}
             onPick={handlePick}
           />
           {picked && (
