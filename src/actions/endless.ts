@@ -50,7 +50,7 @@ export async function startEndlessRound(
 
   const { data, error: fetchError } = await supabase
     .from("tracks")
-    .select("source, preview_url, youtube_id")
+    .select("source, preview_url, youtube_id, start_offset_ms")
     .eq("id", trackId)
     .single();
   if (fetchError) throw new Error(`track fetch failed: ${fetchError.message}`);
@@ -60,6 +60,7 @@ export async function startEndlessRound(
       source: data.source,
       previewUrl: data.preview_url,
       youtubeId: data.youtube_id,
+      startOffsetMs: data.start_offset_ms ?? 0,
     },
     token: sealTrackId(trackId),
   };

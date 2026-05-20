@@ -43,6 +43,7 @@ function mapRow(row: Record<string, unknown>): Track {
     previewUrl: (row.preview_url as string | null) ?? null,
     youtubeId: (row.youtube_id as string | null) ?? null,
     artworkUrl: (row.artwork_url as string | null) ?? null,
+    startOffsetMs: (row.start_offset_ms as number | null) ?? 0,
   };
 }
 
@@ -58,7 +59,9 @@ export async function getTrackForDay(dayNumber: number): Promise<Track | null> {
 
   const { data, error: fetchError } = await supabase
     .from("tracks")
-    .select("id, artist, title, source, preview_url, youtube_id, artwork_url")
+    .select(
+      "id, artist, title, source, preview_url, youtube_id, artwork_url, start_offset_ms",
+    )
     .eq("id", trackId)
     .single();
   if (fetchError) throw new Error(`track fetch failed: ${fetchError.message}`);

@@ -189,7 +189,9 @@ export async function startRound(code: string, hostId: string): Promise<void> {
 
   const { data: correct } = await supabase
     .from("tracks")
-    .select("id, artist, title, source, preview_url, youtube_id, artwork_url")
+    .select(
+      "id, artist, title, source, preview_url, youtube_id, artwork_url, start_offset_ms",
+    )
     .eq("id", correctId)
     .single();
   if (!correct) throw new Error("Could not load a track.");
@@ -210,6 +212,7 @@ export async function startRound(code: string, hostId: string): Promise<void> {
     source: correct.source,
     previewUrl: correct.preview_url,
     youtubeId: correct.youtube_id,
+    startOffsetMs: correct.start_offset_ms ?? 0,
   };
 
   await supabase

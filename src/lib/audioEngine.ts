@@ -94,28 +94,32 @@ export function useAudioEngine(track: ClientTrack): AudioEngine {
   const activeRef = useRef(false);
   const rafRef = useRef<number | null>(null);
 
+  // Playback is offset by track.startOffsetMs to skip a quiet intro; positions
+  // reported to the game are always relative to that offset (0 = clip start).
   const getPositionMs = useCallback((): number => {
-    if (track.source === "itunes") {
-      return (audioRef.current?.currentTime ?? 0) * 1000;
-    }
-    return (ytRef.current?.getCurrentTime() ?? 0) * 1000;
-  }, [track.source]);
+    const raw =
+      track.source === "itunes"
+        ? (audioRef.current?.currentTime ?? 0) * 1000
+        : (ytRef.current?.getCurrentTime() ?? 0) * 1000;
+    return Math.max(0, raw - track.startOffsetMs);
+  }, [track.source, track.startOffsetMs]);
 
   const rewindBackend = useCallback(() => {
+    const offsetSec = track.startOffsetMs / 1000;
     if (track.source === "itunes") {
       const a = audioRef.current;
       if (a) {
         a.pause();
-        a.currentTime = 0;
+        a.currentTime = offsetSec;
       }
     } else {
       const p = ytRef.current;
       if (p) {
         p.pauseVideo();
-        p.seekTo(0, true);
+        p.seekTo(offsetSec, true);
       }
     }
-  }, [track.source]);
+  }, [track.source, track.startOffsetMs]);
 
   const cancelRaf = useCallback(() => {
     if (rafRef.current !== null) {
@@ -161,25 +165,26 @@ export function useAudioEngine(track: ClientTrack): AudioEngine {
       capRef.current = capMs;
       activeRef.current = true;
       setPositionMs(0);
+      const offsetSec = track.startOffsetMs / 1000;
 
       if (track.source === "itunes") {
         const a = audioRef.current;
         if (!a) return;
-        a.currentTime = 0;
+        a.currentTime = offsetSec;
         void a.play().catch(() => {
           /* autoplay/gesture rejection — ignore */
         });
       } else {
         const p = ytRef.current;
         if (!p) return;
-        p.seekTo(0, true);
+        p.seekTo(offsetSec, true);
         p.playVideo();
       }
 
       cancelRaf();
       rafRef.current = requestAnimationFrame(tick);
     },
-    [track.source, cancelRaf, tick],
+    [track.source, track.startOffsetMs, cancelRaf, tick],
   );
 
   // --- Backend setup -------------------------------------------------------

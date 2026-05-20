@@ -9,6 +9,8 @@ export interface Track {
   previewUrl: string | null;
   youtubeId: string | null;
   artworkUrl: string | null;
+  /** Playback starts this many ms in — skips a quiet intro. */
+  startOffsetMs: number;
 }
 
 /** Only the fields safe to send to the browser before the game ends. */
@@ -16,6 +18,8 @@ export interface ClientTrack {
   source: AudioSource;
   previewUrl: string | null;
   youtubeId: string | null;
+  /** Playback starts this many ms in — skips a quiet intro. */
+  startOffsetMs: number;
 }
 
 /** One autocomplete search hit. */

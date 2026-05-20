@@ -29,6 +29,7 @@ export default async function Page() {
         source: daily.track.source,
         previewUrl: daily.track.previewUrl,
         youtubeId: daily.track.youtubeId,
+        startOffsetMs: daily.track.startOffsetMs,
       };
     }
   } catch {

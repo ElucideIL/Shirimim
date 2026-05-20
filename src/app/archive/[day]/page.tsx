@@ -48,6 +48,7 @@ export default async function ArchiveDayPage({
         source: full.source,
         previewUrl: full.previewUrl,
         youtubeId: full.youtubeId,
+        startOffsetMs: full.startOffsetMs,
       };
     }
   } catch {

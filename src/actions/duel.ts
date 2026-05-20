@@ -36,7 +36,7 @@ export async function getDuelTrack(duelId: string): Promise<ClientTrack | null> 
 
   const { data } = await supabase
     .from("tracks")
-    .select("source, preview_url, youtube_id")
+    .select("source, preview_url, youtube_id, start_offset_ms")
     .eq("id", duel.track_id)
     .single();
   if (!data) return null;
@@ -45,6 +45,7 @@ export async function getDuelTrack(duelId: string): Promise<ClientTrack | null> 
     source: data.source,
     previewUrl: data.preview_url,
     youtubeId: data.youtube_id,
+    startOffsetMs: data.start_offset_ms ?? 0,
   };
 }
 

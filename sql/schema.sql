@@ -209,6 +209,7 @@ alter table daily_songs enable row level security;
 alter table tracks add column if not exists genre        text;
 alter table tracks add column if not exists script       text;   -- hebrew | latin | other
 alter table tracks add column if not exists release_year int;    -- 4-digit year from iTunes
+alter table tracks add column if not exists start_offset_ms int not null default 0;  -- skip a quiet intro
 
 create index if not exists tracks_genre_idx        on tracks (genre);
 create index if not exists tracks_script_idx       on tracks (script);
