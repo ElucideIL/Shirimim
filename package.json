@@ -2,6 +2,24 @@
   "name": "shirimim",
   "version": "0.1.0",
   "private": true,
+  "description": "Self-hosted Heardle-style music guessing game with Daily, Endless, real-time Party, Duel and Lyrics modes.",
+  "author": "Ofek Spiegler",
+  "license": "MIT",
+  "homepage": "https://shirimim.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ElucideIL/Shirimim.git"
+  },
+  "keywords": [
+    "music-game",
+    "heardle",
+    "songless",
+    "nextjs",
+    "react",
+    "supabase",
+    "typescript",
+    "game"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
