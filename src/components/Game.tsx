@@ -40,7 +40,15 @@ export function Game({ dayNumber, track, archived = false }: Props) {
                 More from the archive
               </Link>
             ) : (
-              <MidnightCountdown />
+              <div className="flex flex-col items-center gap-2">
+                <MidnightCountdown />
+                <Link
+                  href="/duel"
+                  className="text-xs text-emerald-400 hover:underline"
+                >
+                  Challenge a friend to a duel →
+                </Link>
+              </div>
             )
           }
           onClose={close}

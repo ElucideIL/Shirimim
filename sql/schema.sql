@@ -282,3 +282,46 @@ $$;
 -- Party tables: RLS locked, same as the rest of the app.
 alter table rooms   enable row level security;
 alter table players enable row level security;
+
+-- ============================================================================
+-- SOCIAL — friend leaderboard + duels
+-- ============================================================================
+
+-- daily_results: each player's own result for one day. Honor-system identity
+-- (a per-browser id from localStorage) — one row per player per day.
+create table if not exists daily_results (
+  id          uuid primary key default uuid_generate_v4(),
+  day_number  int  not null,
+  player_id   text not null,
+  name        text not null,
+  won         boolean not null,
+  guesses     int  not null,
+  created_at  timestamptz not null default now(),
+  unique (day_number, player_id)
+);
+create index if not exists daily_results_day_idx on daily_results (day_number);
+
+alter table daily_results enable row level security;
+
+-- duels: one shared song, challenged via a shareable link.
+create table if not exists duels (
+  id         uuid primary key default uuid_generate_v4(),
+  track_id   uuid not null references tracks(id),
+  created_at timestamptz not null default now()
+);
+
+-- duel_results: each player's attempt at a duel — one row per player per duel.
+create table if not exists duel_results (
+  id         uuid primary key default uuid_generate_v4(),
+  duel_id    uuid not null references duels(id) on delete cascade,
+  player_id  text not null,
+  name       text not null,
+  won        boolean not null,
+  guesses    int  not null,
+  created_at timestamptz not null default now(),
+  unique (duel_id, player_id)
+);
+create index if not exists duel_results_duel_idx on duel_results (duel_id);
+
+alter table duels        enable row level security;
+alter table duel_results enable row level security;

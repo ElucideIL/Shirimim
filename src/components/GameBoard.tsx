@@ -226,6 +226,12 @@ export function GameBoard({
             Stats
           </Link>
           <Link
+            href="/leaderboard"
+            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+          >
+            Board
+          </Link>
+          <Link
             href="/party"
             className="rounded-lg border border-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
           >

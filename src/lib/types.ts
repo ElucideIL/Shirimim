@@ -81,6 +81,14 @@ export interface ArchiveEntry {
   date: string;
 }
 
+/** One player's result row — used by both the friend leaderboard and duels. */
+export interface ResultRow {
+  playerId: string;
+  name: string;
+  won: boolean;
+  guesses: number;
+}
+
 // ---------------------------------------------------------------------------
 // Party Mode
 // ---------------------------------------------------------------------------
