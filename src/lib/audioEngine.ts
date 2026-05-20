@@ -215,14 +215,20 @@ export function useAudioEngine(track: ClientTrack): AudioEngine {
       };
     }
 
-    // YouTube backend
+    // YouTube backend. The YT IFrame API REPLACES the element it is handed
+    // with an <iframe>. Handing it a React-rendered node makes React crash on
+    // unmount ("removeChild: node is not a child") because the node it expects
+    // is gone. So we mount the player into our own throwaway child div instead
+    // — React only ever owns the stable #yt-player-host wrapper.
     if (!track.youtubeId) return;
     let player: YTPlayer | null = null;
     void loadYouTubeApi().then((YT) => {
       if (cancelled) return;
       const host = document.getElementById(YT_HOST_ID);
       if (!host) return;
-      player = new YT.Player(host, {
+      const mount = document.createElement("div");
+      host.appendChild(mount);
+      player = new YT.Player(mount, {
         videoId: track.youtubeId as string,
         playerVars: { playsinline: 1, controls: 0, disablekb: 1, rel: 0 },
         events: {
