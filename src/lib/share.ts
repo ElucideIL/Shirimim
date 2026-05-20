@@ -19,6 +19,7 @@ export function buildShareText(
     const g = guesses[i];
     if (!g) squares.push("⬜");
     else if (g.outcome === "correct") squares.push("🟩");
+    else if (g.outcome === "artist") squares.push("🟨"); // right artist
     else squares.push("🟥"); // wrong or skipped
   }
   const header = dayNumber === null ? "Shirimim" : `Shirimim #${dayNumber}`;

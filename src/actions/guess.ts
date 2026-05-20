@@ -2,6 +2,8 @@
 
 import { MAX_ATTEMPTS } from "@/lib/constants";
 import { getDayNumber, getTrackForDay } from "@/lib/daily";
+import { sameArtist } from "@/lib/match";
+import { getServiceClient } from "@/lib/supabase";
 import type { TurnInput, TurnResult } from "@/lib/types";
 
 /**
@@ -19,10 +21,23 @@ export async function resolveTurn(input: TurnInput): Promise<TurnResult> {
   }
 
   const correct = action === "guess" && guessTrackId === track.id;
+
+  // Wrong song, but did the player at least name the right artist?
+  let artistMatch = false;
+  if (action === "guess" && !correct && guessTrackId) {
+    const { data } = await getServiceClient()
+      .from("tracks")
+      .select("artist")
+      .eq("id", guessTrackId)
+      .single();
+    if (data) artistMatch = sameArtist(data.artist, track.artist);
+  }
+
   const gameOver = correct || attemptIndex >= MAX_ATTEMPTS - 1;
 
   return {
     correct,
+    artistMatch,
     gameOver,
     answer: gameOver
       ? {

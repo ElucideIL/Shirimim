@@ -20,6 +20,7 @@ function squaresFor(guesses: GuessRow[]): string[] {
     const g = guesses[i];
     if (!g) return "⬜";
     if (g.outcome === "correct") return "🟩";
+    if (g.outcome === "artist") return "🟨";
     return "🟥";
   });
 }

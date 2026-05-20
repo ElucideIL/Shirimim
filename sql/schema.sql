@@ -112,18 +112,39 @@ as $$
 $$;
 
 -- ----------------------------------------------------------------------------
--- random_track: pick a random track for Endless mode, optionally excluding the
--- previous one so the same song never appears twice in a row.
+-- random_track: pick a random track, optionally excluding the previous one and
+-- optionally filtered by genre and/or script (for Endless mode sub-modes).
 -- ----------------------------------------------------------------------------
-create or replace function random_track(exclude_id uuid default null)
+create or replace function random_track(
+  exclude_id uuid default null,
+  p_genre    text default null,
+  p_script   text default null
+)
 returns uuid
 language sql
 as $$
   select id
   from tracks
-  where exclude_id is null or id <> exclude_id
+  where (exclude_id is null or id <> exclude_id)
+    and (p_genre  is null or genre  = p_genre)
+    and (p_script is null or script = p_script)
   order by random()
   limit 1;
+$$;
+
+-- ----------------------------------------------------------------------------
+-- endless_genres: genres with enough tracks to make a fun Endless sub-mode.
+-- ----------------------------------------------------------------------------
+create or replace function endless_genres()
+returns table (genre text, n bigint)
+language sql
+as $$
+  select genre, count(*) as n
+  from tracks
+  where genre is not null
+  group by genre
+  having count(*) >= 10
+  order by n desc;
 $$;
 
 -- ----------------------------------------------------------------------------

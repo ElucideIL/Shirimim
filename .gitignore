@@ -49,3 +49,4 @@ ingest/__pycache__/
 ingest/progress_state.json
 ingest/unresolved.csv
 ingest/seed.csv
+ingest/song_library/

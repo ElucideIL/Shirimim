@@ -32,7 +32,8 @@ export interface Answer {
   artworkUrl: string | null;
 }
 
-export type GuessOutcome = "correct" | "wrong" | "skipped";
+// "artist" = wrong song but the same artist as the answer.
+export type GuessOutcome = "correct" | "artist" | "wrong" | "skipped";
 
 /** One filled row in the guess history grid. */
 export interface GuessRow {
@@ -54,8 +55,22 @@ export interface TurnInput {
 /** Result of submitting a guess or a skip to the server. */
 export interface TurnResult {
   correct: boolean;
+  /** Wrong song, but the guessed track shares the answer's artist. */
+  artistMatch: boolean;
   gameOver: boolean;
   answer: Answer | null;
+}
+
+/** Endless-mode sub-mode: the whole library, Hebrew only, or one genre. */
+export type EndlessFilter =
+  | { kind: "all" }
+  | { kind: "hebrew" }
+  | { kind: "genre"; genre: string };
+
+/** Available Endless sub-modes, for the mode picker. */
+export interface EndlessModes {
+  hebrew: number;
+  genres: { genre: string; n: number }[];
 }
 
 // ---------------------------------------------------------------------------

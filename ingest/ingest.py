@@ -22,6 +22,7 @@ import json
 import os
 import random
 import re
+import sys
 import time
 import unicodedata
 from pathlib import Path
@@ -169,9 +170,10 @@ def read_csv(path: Path):
                 continue
             artist = clean(raw[a_idx])
             title = clean(raw[t_idx])
-            # Exportify joins multiple artists with ", " - keep the primary one.
-            if "," in artist:
-                artist = artist.split(",")[0].strip()
+            # Exportify joins multiple artists with ";" - keep the primary one.
+            # (Split only on ";", never "," — names like "Tyler, The Creator".)
+            if ";" in artist:
+                artist = artist.split(";")[0].strip()
             rows.append((artist, title))
     return rows
 
@@ -295,17 +297,22 @@ def youtube_lookup(artist: str, title: str):
 # ---------------------------------------------------------------------------
 # Progress + persistence
 # ---------------------------------------------------------------------------
-def load_progress(reset: bool) -> int:
+def load_progress(reset: bool, csv_name: str) -> int:
+    """Resume position — but only if the saved progress is for THIS csv file."""
     if reset or not PROGRESS_FILE.exists():
         return 0
     try:
-        return int(json.loads(PROGRESS_FILE.read_text()).get("next_row", 0))
+        data = json.loads(PROGRESS_FILE.read_text())
+        if data.get("csv") != csv_name:
+            return 0  # a different playlist file — start fresh
+        return int(data.get("next_row", 0))
     except Exception:
         return 0
 
 
-def save_progress(next_row: int, stats: dict):
+def save_progress(next_row: int, stats: dict, csv_name: str):
     PROGRESS_FILE.write_text(json.dumps({
+        "csv": csv_name,
         "next_row": next_row,
         "stats": stats,
         "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -356,6 +363,12 @@ def parse_args():
 
 def main():
     args = parse_args()
+    # Force UTF-8 stdout — Windows defaults to a locale codepage (e.g. cp1255)
+    # that can't encode every artist/title character.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
     load_dotenv(HERE / ".env")
 
     url = os.environ.get("SUPABASE_URL")
@@ -375,10 +388,11 @@ def main():
     csv_path = csv_arg if csv_arg.is_absolute() else (HERE / csv_arg)
     if not csv_path.exists():
         raise SystemExit(f"CSV not found: {csv_path}")
+    csv_name = csv_path.name
 
     rows = read_csv(csv_path)
     total = len(rows)
-    start = load_progress(args.reset)
+    start = load_progress(args.reset, csv_name)
     stats = {"itunes": 0, "youtube": 0, "unresolved": 0}
     print(f"Loaded {total} rows from {csv_path.name}. Resuming at row {start + 1}.\n")
 
@@ -394,7 +408,7 @@ def main():
             print(f"  > upserted {n}/{len(batch)} rows")
             batch = []
         last_flushed = through_row
-        save_progress(last_flushed, stats)
+        save_progress(last_flushed, stats, csv_name)
 
     try:
         for idx in range(start, total):
@@ -402,7 +416,7 @@ def main():
             if not artist or not title:
                 stats["unresolved"] += 1
                 log_unresolved(artist, title, "missing artist or title")
-                save_progress(last_flushed, stats)
+                save_progress(last_flushed, stats, csv_name)
                 continue
 
             print(f"[{idx + 1}/{total}] {artist} - {title}")
@@ -440,7 +454,7 @@ def main():
             if len(batch) >= BATCH_SIZE:
                 flush(processed_through)
             else:
-                save_progress(last_flushed, stats)
+                save_progress(last_flushed, stats, csv_name)
 
         flush(total)
 

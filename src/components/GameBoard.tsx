@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useAudioEngine, YT_HOST_ID } from "@/lib/audioEngine";
 import { INTERVALS, MAX_ATTEMPTS, TOTAL_MS } from "@/lib/constants";
 import type {
@@ -47,6 +53,8 @@ interface Props {
   renderEnd: (ctx: EndContext) => ReactNode;
   /** localStorage key for progress persistence. Omit for ephemeral rounds. */
   persistKey?: string;
+  /** Fired once when the round ends — used by Endless for streak tracking. */
+  onRoundEnd?: (won: boolean) => void;
 }
 
 /**
@@ -61,6 +69,7 @@ export function GameBoard({
   onTurn,
   renderEnd,
   persistKey,
+  onRoundEnd,
 }: Props) {
   const { isReady, isPlaying, positionMs, playSegment, stop } =
     useAudioEngine(track);
@@ -105,6 +114,15 @@ export function GameBoard({
     }
   }, [hydrated, persistKey, currentAttempt, guesses, status, answer]);
 
+  // Report the round result exactly once when it ends.
+  const roundEndReported = useRef(false);
+  useEffect(() => {
+    if (status !== "playing" && !roundEndReported.current) {
+      roundEndReported.current = true;
+      onRoundEnd?.(status === "won");
+    }
+  }, [status, onRoundEnd]);
+
   const handlePlayToggle = useCallback(() => {
     if (status !== "playing") return;
     if (isPlaying) stop();
@@ -128,7 +146,8 @@ export function GameBoard({
           setAnswer(res.answer);
           setStatus("won");
         } else {
-          setGuesses((g) => [...g, { outcome: "wrong", label }]);
+          const outcome = res.artistMatch ? "artist" : "wrong";
+          setGuesses((g) => [...g, { outcome, label }]);
           setCurrentAttempt((a) => a + 1);
           if (res.gameOver) {
             setAnswer(res.answer);
